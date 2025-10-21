@@ -197,6 +197,52 @@ fn transform_constant_expr(
 
             Operand::Move(var)
         }
+
+        ConstantExprKind::Slice(fields) => {
+            let fields = fields
+                .into_iter()
+                .map(|x| transform_constant_expr(span, Box::new(x), new_var))
+                .collect_vec();
+
+            let len_lit =
+                Literal::Scalar(ScalarValue::Unsigned(UIntTy::Usize, fields.len() as u128));
+            let len = ConstGeneric::Value(len_lit.clone());
+            let (TyKind::Ref(_, inner_ty, _) | TyKind::RawPtr(inner_ty, _)) = val.ty.kind() else {
+                panic!("Expected slice type, got {:?}", val.ty);
+            };
+            assert!(inner_ty.is_slice());
+            let ty = inner_ty.as_array_or_slice().unwrap();
+            let rval = Rvalue::Aggregate(AggregateKind::Array(ty.clone(), len.clone()), fields);
+
+            let var_ty = Ty::mk_array(ty.clone(), len.clone());
+            let var = new_var(rval, var_ty.clone());
+
+            // For slices, we need to take a reference to the array,
+            // and then unsize it to a slice.
+            let ref_var = new_var(
+                Rvalue::Ref {
+                    place: var,
+                    kind: BorrowKind::Shared,
+                    ptr_metadata: Operand::Const(Box::new(ConstantExpr {
+                        kind: ConstantExprKind::Literal(len_lit),
+                        ty: Ty::mk_usize(),
+                    })),
+                },
+                TyKind::Ref(Region::Erased, var_ty, RefKind::Shared).into_ty(),
+            );
+            let slice_var = new_var(
+                Rvalue::UnaryOp(
+                    UnOp::Cast(CastKind::Unsize(
+                        ref_var.ty.clone(),
+                        val.ty.clone(),
+                        UnsizingMetadata::Length(len),
+                    )),
+                    Operand::Move(ref_var),
+                ),
+                val.ty,
+            );
+            Operand::Move(slice_var)
+        }
         ConstantExprKind::FnPtr(fptr, sig) => {
             let from_ty = TyKind::FnDef(sig.clone().map(|_| fptr.clone())).into_ty();
             let to_ty = TyKind::FnPtr(sig).into_ty();
