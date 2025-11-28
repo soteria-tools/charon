@@ -463,6 +463,26 @@ impl From<FunDeclRef> for FnPtr {
     }
 }
 
+#[derive(Debug, PartialEq, Eq, Clone, Serialize, Deserialize, Drive, DriveMut, Hash)]
+pub enum Provenance {
+    Global(GlobalDeclRef),
+    Function(FunDeclRef),
+    Unknown,
+}
+
+/// A byte, in the MiniRust sense: it can either be uninitialized, a concrete u8 value,
+/// or part of a pointer with provenance (e.g. to a global or a function)
+#[derive(Debug, PartialEq, Eq, Clone, Serialize, Deserialize, Drive, DriveMut, Hash)]
+pub enum Byte {
+    /// An uninitialized byte
+    Uninit,
+    /// A concrete byte value
+    Value(u8),
+    /// A byte that is part of a pointer with provenance. The u8 is the offset within the
+    /// pointer.
+    Provenance(Provenance, u8),
+}
+
 /// A constant expression.
 ///
 /// Only the [`ConstantExprKind::Literal`] and [`ConstantExprKind::Var`]
@@ -581,7 +601,7 @@ pub enum ConstantExprKind {
     /// Raw memory value obtained from constant evaluation. Used when a more structured
     /// representation isn't possible (e.g. for unions) or just isn't implemented yet.
     #[drive(skip)]
-    RawMemory(Vec<u8>),
+    RawMemory(Vec<Byte>),
     /// A constant expression that Charon still doesn't handle, along with the reason why.
     #[drive(skip)]
     Opaque(String),
