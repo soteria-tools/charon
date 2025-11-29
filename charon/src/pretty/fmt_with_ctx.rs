@@ -1165,6 +1165,10 @@ impl<C: AstFormatter> FmtWithCtx<C> for ConstantExprKind {
                 let values = values.iter().map(|v| v.with_ctx(ctx)).format(", ");
                 write!(f, "[{}]", values)
             }
+            ConstantExprKind::Slice(values) => {
+                let values = values.iter().map(|v| v.with_ctx(ctx)).format(", ");
+                write!(f, "[{}]", values)
+            }
             ConstantExprKind::Global(global_ref) => {
                 write!(f, "{}", global_ref.with_ctx(ctx))
             }
