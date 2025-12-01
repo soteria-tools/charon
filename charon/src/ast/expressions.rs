@@ -530,10 +530,6 @@ pub enum ConstantExprKind {
     /// We eliminate this case in a micro-pass.
     #[charon::opaque]
     Adt(Option<VariantId>, Vec<ConstantExpr>),
-    /// A union constant, with the field to which we write, and the inner value.
-    /// We eliminate this case in a micro-pass.
-    #[charon::opaque]
-    Union(FieldId, Box<ConstantExpr>),
     #[charon::opaque]
     Array(Vec<ConstantExpr>),
     #[charon::opaque]

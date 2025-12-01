@@ -191,8 +191,7 @@ impl<'tcx, 'ctx> ItemTransCtx<'tcx, 'ctx> {
             | ConstantExprKind::FnPtr { .. }
             | ConstantExprKind::FnDef { .. }
             | ConstantExprKind::Opaque(_)
-            | ConstantExprKind::PtrNoProvenance(..)
-            | ConstantExprKind::Union(..) => {
+            | ConstantExprKind::PtrNoProvenance(..) => {
                 raise_error!(self, span, "Unexpected constant generic: {:?}", kind)
             }
         }
