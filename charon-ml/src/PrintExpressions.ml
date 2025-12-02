@@ -137,7 +137,8 @@ and byte_to_string (env : 'a fmt_env) (cv : byte) : string =
   match cv with
   | Uninit -> "uninit"
   | Value b -> string_of_int b
-  | Provenance p -> provenance_to_string env p
+  | Provenance (p, i) ->
+      provenance_to_string env p ^ "[" ^ string_of_int i ^ "]"
 
 and constant_expr_to_string (env : 'a fmt_env) (cv : constant_expr) : string =
   match cv.kind with
