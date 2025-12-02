@@ -150,9 +150,7 @@ impl<'tcx, 'ctx> ItemTransCtx<'tcx, 'ctx> {
                     .erase();
                 ConstantExprKind::FnPtr(fn_ptr)
             }
-            hax::ConstantExprKind::Memory(bytes) => {
-                ConstantExprKind::RawMemory(bytes.iter().map(|b| Byte::Value(*b)).collect())
-            }
+            hax::ConstantExprKind::Memory(bytes) => ConstantExprKind::RawMemory(bytes.clone()),
             hax::ConstantExprKind::Todo(msg) => {
                 register_error!(self, span, "Unsupported constant: {:?}", msg);
                 ConstantExprKind::Opaque(msg.into())

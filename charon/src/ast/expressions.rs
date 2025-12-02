@@ -463,20 +463,6 @@ impl From<FunDeclRef> for FnPtr {
     }
 }
 
-#[derive(Debug, PartialEq, Eq, Clone, Serialize, Deserialize, Drive, DriveMut, Hash)]
-pub enum Provenance {
-    Global(GlobalDeclRef),
-    Function(FunDeclRef),
-    Unknown,
-}
-
-#[derive(Debug, PartialEq, Eq, Clone, Serialize, Deserialize, Drive, DriveMut, Hash)]
-pub enum Byte {
-    Uninit,
-    Value(u8),
-    Provenance(Provenance),
-}
-
 /// A constant expression.
 ///
 /// Only the [`ConstantExprKind::Literal`] and [`ConstantExprKind::Var`]
@@ -595,7 +581,7 @@ pub enum ConstantExprKind {
     /// Raw memory value obtained from constant evaluation. Used when a more structured
     /// representation isn't possible (e.g. for unions) or just isn't implemented yet.
     #[drive(skip)]
-    RawMemory(Vec<Byte>),
+    RawMemory(Vec<u8>),
     /// A constant expression that Charon still doesn't handle, along with the reason why.
     #[drive(skip)]
     Opaque(String),
