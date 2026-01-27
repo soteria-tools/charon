@@ -46,7 +46,7 @@ fn transform_constant_expr(
         //     let x = GLOBAL;
         //     let y = GLOBAL; // if moving, at this point GLOBAL would be uninitialized
         ConstantExprKind::Global(global_ref) => {
-            return Operand::Copy(Place::new_global(global_ref, val.ty));
+            return Operand::Copy(Place::new_global(global_ref.clone(), val.ty));
         }
         ConstantExprKind::PtrNoProvenance(ptr) => {
             let usize_ty = TyKind::Literal(LiteralTy::UInt(UIntTy::Usize)).into_ty();
@@ -63,7 +63,7 @@ fn transform_constant_expr(
                 })),
             )
         }
-        ConstantExprKind::Ref(bval) if bval.ty.is_slice() => {
+        ConstantExprKind::Ref(bval, _) if bval.ty.is_slice() => {
             // We need to special-case slices; we don't take a reference to the slice,
             // but an unsizing cast
             // We generate the following code:
@@ -87,7 +87,7 @@ fn transform_constant_expr(
                 Operand::Move(array_ref),
             )
         }
-        ConstantExprKind::Ref(bval) => {
+        ConstantExprKind::Ref(bval, metadata) => {
             let place = match bval.kind {
                 ConstantExprKind::Global(global_ref) => Place::new_global(global_ref, bval.ty),
                 _ => {
@@ -99,10 +99,23 @@ fn transform_constant_expr(
                     ctx.rval_to_place(Rvalue::Use(bval), bval_ty)
                 }
             };
-            // Borrow the place.
-            ctx.borrow(place, BorrowKind::Shared)
+
+            match metadata {
+                // Borrow the place.
+                None => ctx.borrow(place, BorrowKind::Shared),
+                // Unsizing borrow.
+                Some(metadata) => {
+                    let src_ty =
+                        TyKind::Ref(Region::Static, place.ty.clone(), RefKind::Shared).into_ty();
+                    let sized_ref = ctx.borrow_to_new_var(place, BorrowKind::Shared, None);
+                    Rvalue::UnaryOp(
+                        UnOp::Cast(CastKind::Unsize(src_ty, val_ty.clone(), metadata)),
+                        Operand::Move(sized_ref),
+                    )
+                }
+            }
         }
-        ConstantExprKind::Ptr(rk, bval) => {
+        ConstantExprKind::Ptr(rk, bval, metadata) => {
             // As the value is originally an argument, it must be Sized, hence no metadata
             let place = match bval.kind {
                 ConstantExprKind::Global(global_ref) => Place::new_global(global_ref, bval.ty),
@@ -115,8 +128,19 @@ fn transform_constant_expr(
                     ctx.rval_to_place(Rvalue::Use(bval), bval_ty)
                 }
             };
-            // Borrow the value
-            ctx.raw_borrow(place, rk)
+            match metadata {
+                // Borrow the place.
+                None => ctx.raw_borrow(place, rk),
+                // Unsizing borrow.
+                Some(metadata) => {
+                    let src_ty = TyKind::RawPtr(place.ty.clone(), RefKind::Shared).into_ty();
+                    let sized_ref = ctx.borrow_to_new_var(place, BorrowKind::Shared, None);
+                    Rvalue::UnaryOp(
+                        UnOp::Cast(CastKind::Unsize(src_ty, val_ty.clone(), metadata)),
+                        Operand::Move(sized_ref),
+                    )
+                }
+            }
         }
         ConstantExprKind::Adt(variant, fields) => {
             let fields = fields
