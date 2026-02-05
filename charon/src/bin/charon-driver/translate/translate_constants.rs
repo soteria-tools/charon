@@ -114,7 +114,15 @@ impl<'tcx, 'ctx> ItemTransCtx<'tcx, 'ctx> {
                     ConstantExprKind::Global(global_ref)
                 }
             },
-            hax::ConstantExprKind::Borrow(v) => 'borrow_const: {
+            hax::ConstantExprKind::Borrow(v)
+                if let hax::ConstantExprKind::Literal(hax::ConstantLiteral::Str(s)) =
+                    v.contents.as_ref()
+                    && !self.t_ctx.options.unsized_strings =>
+            {
+                ConstantExprKind::Literal(Literal::Str(s.clone()))
+            }
+
+            hax::ConstantExprKind::Borrow(v) => {
                 let mut val = self.translate_constant_expr(span, v)?;
                 let metadata = match (v.contents.as_ref(), val.ty.kind()) {
                     (hax::ConstantExprKind::Array { fields }, TyKind::Slice(subty)) => {
@@ -126,10 +134,8 @@ impl<'tcx, 'ctx> ItemTransCtx<'tcx, 'ctx> {
                         val.ty = Ty::mk_array(subty.clone(), len.clone());
                         Some(UnsizingMetadata::Length(Box::new(len)))
                     }
+
                     (hax::ConstantExprKind::Literal(hax::ConstantLiteral::Str(s)), _) => {
-                        if !self.t_ctx.options.unsized_strings {
-                            break 'borrow_const ConstantExprKind::Literal(Literal::Str(s.clone()));
-                        }
                         let len = ConstantExpr::mk_usize(ScalarValue::Unsigned(
                             UIntTy::Usize,
                             s.len() as u128,
