@@ -4,13 +4,41 @@
 //! compiling for release). In our case, we take this into account in the semantics of our
 //! array/slice manipulation and arithmetic functions, on the verification side.
 
+use std::collections::HashSet;
+
 use derive_generic_visitor::*;
 
 use crate::ast::*;
+use crate::ids::IndexVec;
 use crate::transform::TransformCtx;
-use crate::ullbc_ast::{ExprBody, Statement, StatementKind};
+use crate::ullbc_ast::{BlockId, ExprBody, Statement, StatementKind};
 
 use crate::transform::ctx::UllbcPass;
+
+type LocalUses = IndexVec<BlockId, HashSet<LocalId>>;
+
+fn compute_uses(body: &ExprBody) -> LocalUses {
+    enum Never {}
+    struct UsedLocalsVisitor(HashSet<LocalId>);
+
+    impl Visitor for UsedLocalsVisitor {
+        type Break = Never;
+    }
+    impl VisitBody for UsedLocalsVisitor {
+        fn visit_place(&mut self, x: &Place) -> ::std::ops::ControlFlow<Self::Break> {
+            if let Some(local_id) = x.as_local() {
+                self.0.insert(local_id);
+            }
+            self.visit_inner(x)
+        }
+    }
+
+    body.body.map_ref(|contents| {
+        let mut visitor = UsedLocalsVisitor(HashSet::new());
+        contents.drive_body(&mut visitor);
+        visitor.0
+    })
+}
 
 /// Whether the value uses the given local in a place.
 fn uses_local<T: BodyVisitable>(x: &T, local: LocalId) -> bool {
@@ -84,9 +112,21 @@ fn equiv_op(op_l: &Operand, op_r: &Operand) -> bool {
 /// this is the only use of this statement).
 fn remove_dynamic_checks(
     _ctx: &mut TransformCtx,
+    uses: &LocalUses,
+    block_id: BlockId,
     locals: &mut Locals,
     statements: &mut [Statement],
 ) {
+    let used_elsewhere = |p: &Place| {
+        if let Some(local_id) = p.as_local() {
+            uses.iter_indexed()
+                .any(|(bid, used)| bid != block_id && used.contains(&local_id))
+        } else {
+            // we approximate
+            false
+        }
+    };
+
     // We return the statements we want to keep, which must be a prefix of `block.statements`.
     let statements_to_keep = match statements {
         // Bounds checks for slices. They look like:
@@ -120,6 +160,12 @@ fn remove_dynamic_checks(
             && cond == is_in_bounds
             && let Some((_, ProjectionElem::PtrMetadata)) = len_op.as_projection() =>
         {
+            if used_elsewhere(len) {
+                // We only remove the check, but keep the length assignment
+                statements[1].kind = StatementKind::Nop;
+                statements[2].kind = StatementKind::Nop;
+                return;
+            }
             rest
         }
         // Sometimes that instead looks like:
@@ -482,8 +528,9 @@ impl UllbcPass for Transform {
     }
 
     fn transform_body(&self, ctx: &mut TransformCtx, b: &mut ExprBody) {
-        b.transform_sequences_fwd(|locals, seq| {
-            remove_dynamic_checks(ctx, locals, seq);
+        let local_uses: LocalUses = compute_uses(b);
+        b.transform_sequences_fwd(|id, locals, seq| {
+            remove_dynamic_checks(ctx, &local_uses, id, locals, seq);
             Vec::new()
         });
     }
