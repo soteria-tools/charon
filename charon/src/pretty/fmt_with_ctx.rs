@@ -1550,7 +1550,14 @@ impl<C: AstFormatter> FmtWithCtx<C> for ullbc::Statement {
             StatementKind::Deinit(place) => {
                 write!(f, "{tab}deinit({})", place.with_ctx(ctx))
             }
-            StatementKind::Assert(assert) => write!(f, "{tab}{}", assert.with_ctx(ctx)),
+            StatementKind::Assert { assert, on_failure } => {
+                write!(
+                    f,
+                    "{tab}{} else {}",
+                    assert.with_ctx(ctx),
+                    on_failure.with_ctx(ctx)
+                )
+            }
             StatementKind::Nop => write!(f, "{tab}nop"),
         }
     }
@@ -1596,8 +1603,13 @@ impl<C: AstFormatter> FmtWithCtx<C> for llbc::Statement {
                 };
                 write!(f, "{kind}[{}] {}", tref.with_ctx(ctx), place.with_ctx(ctx),)
             }
-            StatementKind::Assert(assert) => {
-                write!(f, "{}", assert.with_ctx(ctx),)
+            StatementKind::Assert { assert, on_failure } => {
+                write!(
+                    f,
+                    "{} else {}",
+                    assert.with_ctx(ctx),
+                    on_failure.with_ctx(ctx)
+                )
             }
             StatementKind::Call(call) => {
                 write!(f, "{}", call.with_ctx(ctx))
@@ -1734,6 +1746,17 @@ impl<C: AstFormatter> FmtWithCtx<C> for Terminator {
                     "{kind}[{}] {} -> bb{target} (unwind: bb{on_unwind})",
                     tref.with_ctx(ctx),
                     place.with_ctx(ctx),
+                )
+            }
+            TerminatorKind::Assert {
+                assert,
+                target,
+                on_unwind,
+            } => {
+                write!(
+                    f,
+                    "assert {} -> bb{target} (unwind: bb{on_unwind})",
+                    assert.with_ctx(ctx),
                 )
             }
             TerminatorKind::Abort(kind) => write!(f, "{}", kind.with_ctx(ctx)),

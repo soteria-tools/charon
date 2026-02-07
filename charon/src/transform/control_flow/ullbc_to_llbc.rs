@@ -932,7 +932,9 @@ impl<'a> ReconstructCtx<'a> {
             src::StatementKind::StorageLive(var_id) => tgt::StatementKind::StorageLive(var_id),
             src::StatementKind::StorageDead(var_id) => tgt::StatementKind::StorageDead(var_id),
             src::StatementKind::Deinit(place) => tgt::StatementKind::Deinit(place),
-            src::StatementKind::Assert(assert) => tgt::StatementKind::Assert(assert),
+            src::StatementKind::Assert { assert, on_failure } => {
+                tgt::StatementKind::Assert { assert, on_failure }
+            }
             src::StatementKind::Nop => tgt::StatementKind::Nop,
         };
         tgt::Statement::new(src_span, st)
@@ -1012,6 +1014,31 @@ impl<'a> ReconstructCtx<'a> {
                 let mut block = self.translate_jump(terminator.span, *target);
                 block.statements.insert(0, st);
                 block
+            }
+            src::TerminatorKind::Assert {
+                assert:
+                    Assert {
+                        cond,
+                        expected,
+                        check_kind: _,
+                    },
+                target,
+                on_unwind,
+            } => {
+                let (then_tgt, else_tgt) = if *expected {
+                    (*target, *on_unwind)
+                } else {
+                    (*on_unwind, *target)
+                };
+                let then_block = self.translate_jump(terminator.span, then_tgt);
+                let else_block = self.translate_jump(terminator.span, else_tgt);
+                let switch = tgt::Switch::If(cond.clone(), then_block, else_block);
+
+                // Return
+                let span = tgt::combine_switch_targets_span(&switch);
+                let span = combine_span(&src_span, &span);
+                let st = tgt::StatementKind::Switch(switch);
+                tgt::Statement::new(span, st).into_block()
             }
             src::TerminatorKind::Goto { target } => self.translate_jump(terminator.span, *target),
             src::TerminatorKind::Switch { discr, targets } => {

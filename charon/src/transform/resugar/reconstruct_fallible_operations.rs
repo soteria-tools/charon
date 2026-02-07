@@ -108,11 +108,15 @@ fn remove_dynamic_checks(
             },
             Statement {
                 kind:
-                    StatementKind::Assert(Assert {
-                        cond: Operand::Move(cond),
-                        expected: true,
+                    StatementKind::Assert {
+                        assert:
+                            Assert {
+                                cond: Operand::Move(cond),
+                                expected: true,
+                                ..
+                            },
                         ..
-                    }),
+                    },
                 ..
             },
             rest @ ..,
@@ -153,11 +157,15 @@ fn remove_dynamic_checks(
             },
             Statement {
                 kind:
-                    StatementKind::Assert(Assert {
-                        cond: Operand::Move(cond),
-                        expected: true,
+                    StatementKind::Assert {
+                        assert:
+                            Assert {
+                                cond: Operand::Move(cond),
+                                expected: true,
+                                ..
+                            },
                         ..
-                    }),
+                    },
                 ..
             },
             rest @ ..,
@@ -196,11 +204,15 @@ fn remove_dynamic_checks(
             },
             Statement {
                 kind:
-                    StatementKind::Assert(Assert {
-                        cond: Operand::Move(cond),
-                        expected: false,
+                    StatementKind::Assert {
+                        assert:
+                            Assert {
+                                cond: Operand::Move(cond),
+                                expected: false,
+                                ..
+                            },
                         ..
-                    }),
+                    },
                 ..
             },
             rest @ ..,
@@ -247,11 +259,15 @@ fn remove_dynamic_checks(
             },
             Statement {
                 kind:
-                    StatementKind::Assert(Assert {
-                        cond: Operand::Move(cond),
-                        expected: false,
+                    StatementKind::Assert {
+                        assert:
+                            Assert {
+                                cond: Operand::Move(cond),
+                                expected: false,
+                                ..
+                            },
                         ..
-                    }),
+                    },
                 ..
             },
             rest @ ..,
@@ -278,11 +294,15 @@ fn remove_dynamic_checks(
             },
             Statement {
                 kind:
-                    StatementKind::Assert(Assert {
-                        cond: Operand::Move(cond),
-                        expected: true,
+                    StatementKind::Assert {
+                        assert:
+                            Assert {
+                                cond: Operand::Move(cond),
+                                expected: true,
+                                ..
+                            },
                         ..
-                    }),
+                    },
                 ..
             },
             rest @ ..,
@@ -323,11 +343,15 @@ fn remove_dynamic_checks(
             },
             Statement {
                 kind:
-                    StatementKind::Assert(Assert {
-                        cond: Operand::Move(cond),
-                        expected: true,
+                    StatementKind::Assert {
+                        assert:
+                            Assert {
+                                cond: Operand::Move(cond),
+                                expected: true,
+                                ..
+                            },
                         ..
-                    }),
+                    },
                 ..
             },
             rest @ ..,
@@ -410,11 +434,15 @@ fn remove_dynamic_checks(
             let followed_by_assert = if let [
                 Statement {
                     kind:
-                        StatementKind::Assert(Assert {
-                            cond: Operand::Move(assert_cond),
-                            expected: false,
+                        StatementKind::Assert {
+                            assert:
+                                Assert {
+                                    cond: Operand::Move(assert_cond),
+                                    expected: false,
+                                    ..
+                                },
                             ..
-                        }),
+                        },
                     ..
                 },
                 ..,
