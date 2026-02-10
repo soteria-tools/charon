@@ -162,12 +162,13 @@ where
     let _36: *const T; // anonymous local
     let _37: (); // anonymous local
     let _38: usize; // anonymous local
-    let _39: usize; // anonymous local
-    let _40: bool; // anonymous local
-    let _41: i8; // anonymous local
-    let _42: (); // anonymous local
+    let _39: bool; // anonymous local
+    let _40: usize; // anonymous local
+    let _41: bool; // anonymous local
+    let _42: i8; // anonymous local
     let _43: (); // anonymous local
-    let _44: Result<usize, usize>[{built_in impl Sized for usize}, {built_in impl Sized for usize}]; // anonymous local
+    let _44: (); // anonymous local
+    let _45: Result<usize, usize>[{built_in impl Sized for usize}, {built_in impl Sized for usize}]; // anonymous local
 
     bb0: {
         storage_live(base_5);
@@ -178,11 +179,11 @@ where
         storage_live(result_25);
         storage_live(_30);
         storage_live(_37);
-        storage_live(_39);
         storage_live(_40);
         storage_live(_41);
         storage_live(_42);
         storage_live(_43);
+        storage_live(_44);
         storage_live(size_3);
         size_3 = copy self_1.metadata;
         storage_live(_4);
@@ -192,9 +193,9 @@ where
 
     bb1: {
         storage_dead(_4);
-        storage_live(_44);
-        _44 = Result::Err { 0: const 0 : usize };
-        _0 = move _44;
+        storage_live(_45);
+        _45 = Result::Err { 0: const 0 : usize };
+        _0 = move _45;
         storage_dead(size_3);
         drop[{built_in impl Destruct for F}] f_2 -> bb34 (unwind: bb3);
     }
@@ -247,8 +248,8 @@ where
         storage_live(index_22);
         index_22 = copy base_5;
         storage_live(_36);
-        _40 = ub_checks<bool>;
-        if copy _40 -> bb9 else -> bb10;
+        _41 = ub_checks<bool>;
+        if copy _41 -> bb9 else -> bb10;
     }
 
     bb7: {
@@ -280,7 +281,10 @@ where
     }
 
     bb10: {
-        _39 = copy self_1.metadata;
+        storage_live(_39);
+        _40 = copy self_1.metadata;
+        _39 = copy index_22 < copy _40;
+        storage_dead(_39);
         _36 = &raw const (*self_1)[copy index_22];
         _21 = &(*_36);
         storage_dead(_36);
@@ -316,7 +320,9 @@ where
 
     bb15: {
         storage_dead(_38);
-        _39 = copy self_1.metadata;
+        storage_live(_39);
+        _40 = copy self_1.metadata;
+        storage_dead(_39);
         _36 = &raw const (*self_1)[copy index_22];
         _21 = &(*_36);
         storage_dead(_36);
@@ -332,8 +338,8 @@ where
     bb17: {
         storage_dead(_20);
         storage_dead(_19);
-        _41 = @discriminant(cmp_18);
-        switch move _41 -> 0 : i8: bb22, otherwise: bb23;
+        _42 = @discriminant(cmp_18);
+        switch move _42 -> 0 : i8: bb22, otherwise: bb23;
     }
 
     bb18: {
@@ -357,37 +363,37 @@ where
     bb21: {
         storage_dead(_20);
         storage_dead(_19);
-        _41 = @discriminant(cmp_18);
-        switch move _41 -> 0 : i8: bb24, otherwise: bb25;
+        _42 = @discriminant(cmp_18);
+        switch move _42 -> 0 : i8: bb24, otherwise: bb25;
     }
 
     bb22: {
         storage_live(cond_23);
         storage_live(_24);
         _24 = copy base_5;
-        cond_23 = move _24 < copy _39;
+        cond_23 = move _24 < copy _40;
         storage_dead(_24);
-        if copy _40 -> bb26 else -> bb27;
+        if copy _41 -> bb26 else -> bb27;
     }
 
     bb23: {
         storage_live(_26);
         storage_live(_27);
-        _27 = copy _41 == const -1 : i8;
+        _27 = copy _42 == const -1 : i8;
         _26 = cast<bool, usize>(move _27);
         storage_dead(_27);
         result_25 = move base_5 wrap.+ move _26;
         storage_dead(_26);
         storage_live(cond_28);
-        cond_28 = copy result_25 <= copy _39;
-        if copy _40 -> bb28 else -> bb29;
+        cond_28 = copy result_25 <= copy _40;
+        if copy _41 -> bb28 else -> bb29;
     }
 
     bb24: {
         storage_live(cond_23);
         storage_live(_24);
         _24 = copy base_5;
-        cond_23 = move _24 < copy _39;
+        cond_23 = move _24 < copy _40;
         storage_dead(_24);
         goto bb26;
     }
@@ -395,18 +401,18 @@ where
     bb25: {
         storage_live(_26);
         storage_live(_27);
-        _27 = copy _41 == const -1 : i8;
+        _27 = copy _42 == const -1 : i8;
         _26 = cast<bool, usize>(move _27);
         storage_dead(_27);
         result_25 = move base_5 wrap.+ move _26;
         storage_dead(_26);
         storage_live(cond_28);
-        cond_28 = copy result_25 <= copy _39;
+        cond_28 = copy result_25 <= copy _40;
         goto bb28;
     }
 
     bb26: {
-        _42 = core::hint::assert_unchecked::precondition_check(copy cond_23) -> bb27 (unwind: bb30);
+        _43 = core::hint::assert_unchecked::precondition_check(copy cond_23) -> bb27 (unwind: bb30);
     }
 
     bb27: {
@@ -417,7 +423,7 @@ where
     }
 
     bb28: {
-        _43 = core::hint::assert_unchecked::precondition_check(copy cond_28) -> bb29 (unwind: bb32);
+        _44 = core::hint::assert_unchecked::precondition_check(copy cond_28) -> bb29 (unwind: bb32);
     }
 
     bb29: {

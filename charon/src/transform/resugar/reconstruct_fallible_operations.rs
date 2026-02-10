@@ -4,7 +4,7 @@
 //! compiling for release). In our case, we take this into account in the semantics of our
 //! array/slice manipulation and arithmetic functions, on the verification side.
 
-use std::collections::HashSet;
+use std::collections::{HashMap, HashSet};
 
 use derive_generic_visitor::*;
 
@@ -63,6 +63,43 @@ fn compute_uses(body: &ExprBody) -> LocalUses {
     })
 }
 
+type UsesCount = HashMap<LocalId, usize>;
+
+/// Compute for each block the locals that are assumed to have been initialized/defined before entering it.
+fn compute_use_count<T: BodyVisitable>(x: &T, mut use_count: &mut UsesCount, increment: bool) {
+    #[derive(Visitor)]
+    struct UsedLocalsVisitor<'a>(&'a mut UsesCount, bool);
+
+    impl VisitBody for UsedLocalsVisitor<'_> {
+        fn visit_place(&mut self, x: &Place) -> ::std::ops::ControlFlow<Self::Break> {
+            if let Some(local_id) = x.as_local() {
+                let entry = self.0.entry(local_id);
+                if self.1 {
+                    entry.and_modify(|count| *count += 1).or_insert(1);
+                } else {
+                    entry.and_modify(|count| *count -= 1).or_insert(0);
+                }
+            }
+            self.visit_inner(x)
+        }
+
+        fn visit_ullbc_statement(
+            &mut self,
+            s: &ullbc_ast::Statement,
+        ) -> ::std::ops::ControlFlow<Self::Break> {
+            match &s.kind {
+                StatementKind::StorageDead(_) | StatementKind::StorageLive(_) => {
+                    ControlFlow::Continue(())
+                }
+                StatementKind::Assign(_, rval) => self.visit_inner(rval),
+                _ => self.visit_inner(s),
+            }
+        }
+    }
+
+    let mut visitor = UsedLocalsVisitor(&mut use_count, increment);
+    let _ = x.drive_body(&mut visitor);
+}
 /// Whether the value uses the given local in a place.
 fn uses_local<T: BodyVisitable>(x: &T, local: LocalId) -> bool {
     struct FoundIt;
@@ -148,6 +185,7 @@ fn equiv_op(op_l: &Operand, op_r: &Operand) -> bool {
 fn remove_dynamic_checks(
     _ctx: &mut TransformCtx,
     uses: &LocalUses,
+    use_count: &mut UsesCount,
     block_id: BlockId,
     locals: &mut Locals,
     statements: &mut [Statement],
@@ -536,19 +574,19 @@ fn remove_dynamic_checks(
     // Remove the statements we're not keeping.
     let keep_len = statements_to_keep.len();
     let removed_len = statements.len() - keep_len;
-    for i in 0..removed_len {
+    for i in (0..removed_len).rev() {
         // If the statement we're removing assigns to a local that
         // is used elsewhere (in the leftover statements or in another block),
         // we don't remove it.
         if let StatementKind::Assign(place, _) = &statements[i].kind
             && let Some(local) = place.as_local()
-            && let mut statements_to_keep = statements[removed_len..].as_ref().iter()
             && let mut other_blocks = uses.iter_indexed().filter(|(bid, _)| *bid != block_id)
             && (other_blocks.any(|(_, used)| used.contains(&local))
-                || statements_to_keep.any(|st| uses_local(st, local)))
+                || use_count.get(&local).map_or(false, |count| *count > 0))
         {
             continue;
         };
+        compute_use_count(&statements[i], use_count, false);
         statements[i].kind = StatementKind::Nop;
     }
 }
@@ -561,8 +599,10 @@ impl UllbcPass for Transform {
 
     fn transform_body(&self, ctx: &mut TransformCtx, b: &mut ExprBody) {
         let local_uses: LocalUses = compute_uses(b);
+        let mut use_count = HashMap::new();
+        compute_use_count(b, &mut use_count, true);
         b.transform_sequences_fwd(|id, locals, seq| {
-            remove_dynamic_checks(ctx, &local_uses, id, locals, seq);
+            remove_dynamic_checks(ctx, &local_uses, &mut use_count, id, locals, seq);
             Vec::new()
         });
     }
