@@ -507,6 +507,9 @@ type cli_options = {
   no_dedup_serialized_ast : bool;
       (** Don't deduplicate values (types, trait refs) in the .(u)llbc file.
           This makes the file easier to inspect. *)
+  no_sources : bool;
+      (** Don't store the contents of source files, AST source code or comments
+          in the translated crate. *)
   no_serialize : bool;  (** Don't serialize the final (U)LLBC to a file. *)
   abort_on_error : bool;
       (** Panic on the first error. This is useful for debugging. *)

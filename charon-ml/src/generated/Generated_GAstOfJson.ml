@@ -445,6 +445,7 @@ and cli_options_of_json (ctx : of_json_ctx) (js : json) :
           ("dest_dir", dest_dir);
           ("dest_file", dest_file);
           ("no_dedup_serialized_ast", no_dedup_serialized_ast);
+          ("no_sources", no_sources);
           ("no_serialize", no_serialize);
           ("abort_on_error", abort_on_error);
           ("error_on_warnings", error_on_warnings);
@@ -500,6 +501,7 @@ and cli_options_of_json (ctx : of_json_ctx) (js : json) :
         let* no_dedup_serialized_ast =
           bool_of_json ctx no_dedup_serialized_ast
         in
+        let* no_sources = bool_of_json ctx no_sources in
         let* no_serialize = bool_of_json ctx no_serialize in
         let* abort_on_error = bool_of_json ctx abort_on_error in
         let* error_on_warnings = bool_of_json ctx error_on_warnings in
@@ -542,6 +544,7 @@ and cli_options_of_json (ctx : of_json_ctx) (js : json) :
              dest_dir;
              dest_file;
              no_dedup_serialized_ast;
+             no_sources;
              no_serialize;
              abort_on_error;
              error_on_warnings;

@@ -25,7 +25,9 @@ impl<'tcx, 'ctx> TranslateCtx<'tcx> {
                 let file = File {
                     name: filename.clone(),
                     crate_name,
-                    contents: source_file.src.as_deref().cloned(),
+                    contents: (!self.options.no_sources)
+                        .then(|| source_file.src.as_deref().cloned())
+                        .flatten(),
                 };
                 let id = self.translated.files.push(file);
                 self.file_to_id.insert(filename, id);
@@ -658,7 +660,7 @@ impl<'tcx, 'ctx> TranslateCtx<'tcx> {
         use rustc_hir::attrs as hir_attrs;
         match attr {
             hir::Attribute::Parsed(hir_attrs::AttributeKind::DocComment { comment, .. }) => {
-                Some(Attribute::DocComment(comment.to_string()))
+                (!self.options.no_sources).then(|| Attribute::DocComment(comment.to_string()))
             }
             hir::Attribute::Parsed(_) => None,
             hir::Attribute::Unparsed(attr) => {
@@ -786,7 +788,9 @@ impl<'tcx, 'ctx> TranslateCtx<'tcx> {
         let item_meta = ItemMeta {
             name,
             span,
-            source_text: def.source_text.clone(),
+            source_text: (!self.options.no_sources)
+                .then(|| def.source_text.clone())
+                .flatten(),
             attr_info,
             is_local,
             opacity,

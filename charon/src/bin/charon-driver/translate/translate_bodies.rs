@@ -346,7 +346,11 @@ impl<'tcx> BodyTransCtx<'tcx, '_, '_> {
         }
 
         // Create the body
-        let comments = self.translate_body_comments(source_text, span);
+        let comments = if self.options.no_sources {
+            Vec::new()
+        } else {
+            self.translate_body_comments(source_text, span)
+        };
         Ok(Body::Unstructured(ExprBody {
             span,
             locals: self.locals,

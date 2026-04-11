@@ -250,6 +250,10 @@ pub struct CliOpts {
     #[clap(long)]
     #[serde(default)]
     pub no_dedup_serialized_ast: bool,
+    /// Don't store the contents of source files, AST source code or comments in the translated crate.
+    #[clap(long)]
+    #[serde(default)]
+    pub no_sources: bool,
     /// Don't serialize the final (U)LLBC to a file.
     #[clap(long)]
     #[serde(default)]
@@ -494,6 +498,8 @@ pub struct TranslateOptions {
     pub add_destruct_bounds: bool,
     /// Translate drop glue for poly types, knowing that this may cause ICEs.
     pub translate_poly_drop_glue: bool,
+    /// Don't store source file contents, AST source code or comments in the translated crate.
+    pub no_sources: bool,
 }
 
 impl TranslateOptions {
@@ -599,6 +605,7 @@ impl TranslateOptions {
             desugar_drops: options.desugar_drops,
             add_destruct_bounds: options.precise_drops,
             translate_poly_drop_glue: options.precise_drops,
+            no_sources: options.no_sources,
         }
     }
 
