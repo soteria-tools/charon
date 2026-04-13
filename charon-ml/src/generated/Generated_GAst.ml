@@ -511,6 +511,9 @@ type cli_options = {
       (** Don't store the contents of source files, AST source code or comments
           in the translated crate. *)
   no_serialize : bool;  (** Don't serialize the final (U)LLBC to a file. *)
+  format : format option;
+      (** The format to use when serializing the translated crate. By default,
+          we use JSON. *)
   abort_on_error : bool;
       (** Panic on the first error. This is useful for debugging. *)
   error_on_warnings : bool;  (** Consider any warnings to be errors. *)
@@ -529,6 +532,15 @@ and declaration_group =
   | TraitImplGroup of trait_impl_id g_declaration_group
   | MixedGroup of item_id g_declaration_group
       (** Anything that doesn't fit into these categories. *)
+
+(** The format to use when serializing the translated crate. *)
+and format =
+  | Json
+      (** JSON serialization, the default. It is more human-readable, but less
+          compact and slower to serialize and deserialize than Postcard. *)
+  | Postcard
+      (** Postcard serialization. It is more compact and faster to serialize and
+          deserialize than JSON, but is binary and not human-readable. *)
 
 (** A (group of) top-level declaration(s), properly reordered. "G" stands for
     "generic" *)

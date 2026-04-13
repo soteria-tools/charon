@@ -258,6 +258,10 @@ pub struct CliOpts {
     #[clap(long)]
     #[serde(default)]
     pub no_serialize: bool,
+    /// The format to use when serializing the translated crate. By default, we use JSON.
+    #[clap(long)]
+    #[serde(default)]
+    pub format: Option<Format>,
     /// Panic on the first error. This is useful for debugging.
     #[clap(long)]
     #[serde(default)]
@@ -287,6 +291,17 @@ pub enum MirLevel {
     /// The MIR after optimizations. Charon disables all the optimizations it can, so this is
     /// sensibly the same MIR as the elaborated MIR.
     Optimized,
+}
+
+/// The format to use when serializing the translated crate.
+#[derive(Debug, Copy, Clone, PartialEq, Eq, ValueEnum, Serialize, Deserialize)]
+pub enum Format {
+    /// JSON serialization, the default. It is more human-readable, but less compact
+    /// and slower to serialize and deserialize than Postcard.
+    Json,
+    /// Postcard serialization. It is more compact and faster to serialize and deserialize than JSON,
+    /// but is binary and not human-readable.
+    Postcard,
 }
 
 /// Presets to make it easier to tweak options without breaking dependent projects. Eventually we

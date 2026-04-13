@@ -22,6 +22,13 @@ let dir_contents dir =
   in
   loop [] [ dir ]
 
+let assert_eq x y msg arg_to_string =
+  if x <> y then
+    raise
+      (Failure
+         ("Real: " ^ arg_to_string x ^ ", Expected: " ^ arg_to_string y
+        ^ " for " ^ msg))
+
 (* Run the tests *)
 let run_tests (folder : string) : unit =
   (* List the LLBC files.
@@ -32,13 +39,9 @@ let run_tests (folder : string) : unit =
     dir_contents folder
     |> List.filter (fun file -> Filename.check_suffix file ".llbc")
   in
-
-  let assert_eq x y msg arg_to_string =
-    if x <> y then
-      raise
-        (Failure
-           ("Real: " ^ arg_to_string x ^ ", Expected: " ^ arg_to_string y
-          ^ " for " ^ msg))
+  let postcard_files =
+    dir_contents folder
+    |> List.filter (fun file -> Filename.check_suffix file ".llbc.postcard")
   in
 
   (* Deserialize LLBC *)
@@ -102,6 +105,19 @@ let run_tests (folder : string) : unit =
             let printed = PrintLlbcAst.Crate.crate_to_string m in
             log#ldebug (lazy ("\n" ^ printed ^ "\n")))
       llbc_files
+  in
+
+  (* Deserialize postcard LLBC *)
+  let () =
+    List.iter
+      (fun file ->
+        log#ldebug (lazy ("Deserializing postcard LLBC file: " ^ file));
+        match LlbcOfPostcard.crate_of_postcard_file file with
+        | Error s ->
+            log#error "Error when deserializing postcard file %s: %s\n" file s;
+            exit 1
+        | Ok _ -> log#linfo (lazy ("Deserialized postcard: " ^ file)))
+      postcard_files
   in
 
   (* Done *)

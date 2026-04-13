@@ -149,8 +149,18 @@ Options:
       --no-dedup-serialized-ast
           Don't deduplicate values (types, trait refs) in the .(u)llbc file. This makes the file easier to inspect
 
+      --no-sources
+          Don't store the contents of source files, AST source code or comments in the translated crate
+
       --no-serialize
           Don't serialize the final (U)LLBC to a file
+
+      --format <FORMAT>
+          The format to use when serializing the translated crate. By default, we use JSON
+
+          Possible values:
+          - json:     JSON serialization, the default. It is more human-readable, but less compact and slower to serialize and deserialize than Postcard
+          - postcard: Postcard serialization. It is more compact and faster to serialize and deserialize than JSON, but is binary and not human-readable
 
       --abort-on-error
           Panic on the first error. This is useful for debugging

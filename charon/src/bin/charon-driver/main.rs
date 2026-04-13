@@ -30,7 +30,7 @@ mod translate;
 
 use charon_lib::{
     export, logger,
-    options::{self, CliOpts},
+    options::{self, CliOpts, Format},
     transform::{
         FINAL_CLEANUP_PASSES, INITIAL_CLEANUP_PASSES, LLBC_PASSES, Pass, PrintCtxPass,
         SHARED_FINALIZING_PASSES, ULLBC_PASSES,
@@ -124,6 +124,7 @@ fn run_charon(options: CliOpts) -> Result<usize, CharonFailure> {
 
     // # Final step: generate the files.
     if !options.no_serialize {
+        let format = options.format.unwrap_or(Format::Json);
         let crate_data = export::CrateData::new(ctx);
         let dest_file = match options.dest_file.clone() {
             Some(f) => f,
@@ -131,13 +132,17 @@ fn run_charon(options: CliOpts) -> Result<usize, CharonFailure> {
                 let mut target_filename = options.dest_dir.clone().unwrap_or_default();
                 let crate_name = &crate_data.translated.crate_name;
                 let extension = if options.ullbc { "ullbc" } else { "llbc" };
+                let extension = match format {
+                    Format::Json => extension.to_string(),
+                    Format::Postcard => format!("{extension}.postcard"),
+                };
                 target_filename.push(format!("{crate_name}.{extension}"));
                 target_filename
             }
         };
         trace!("Target file: {:?}", dest_file);
         crate_data
-            .serialize_to_file(&dest_file)
+            .serialize_to_file(&dest_file, format)
             .map_err(|()| CharonFailure::Serialize)?;
     }
 

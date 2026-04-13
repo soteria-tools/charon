@@ -447,6 +447,7 @@ and cli_options_of_json (ctx : of_json_ctx) (js : json) :
           ("no_dedup_serialized_ast", no_dedup_serialized_ast);
           ("no_sources", no_sources);
           ("no_serialize", no_serialize);
+          ("format", format);
           ("abort_on_error", abort_on_error);
           ("error_on_warnings", error_on_warnings);
           ("preset", preset);
@@ -503,6 +504,7 @@ and cli_options_of_json (ctx : of_json_ctx) (js : json) :
         in
         let* no_sources = bool_of_json ctx no_sources in
         let* no_serialize = bool_of_json ctx no_serialize in
+        let* format = option_of_json format_of_json ctx format in
         let* abort_on_error = bool_of_json ctx abort_on_error in
         let* error_on_warnings = bool_of_json ctx error_on_warnings in
         let* preset = option_of_json preset_of_json ctx preset in
@@ -546,6 +548,7 @@ and cli_options_of_json (ctx : of_json_ctx) (js : json) :
              no_dedup_serialized_ast;
              no_sources;
              no_serialize;
+             format;
              abort_on_error;
              error_on_warnings;
              preset;
@@ -910,6 +913,13 @@ and fn_ptr_kind_of_json (ctx : of_json_ctx) (js : json) :
         let* x_1 = trait_item_name_of_json ctx x_1 in
         let* x_2 = fun_decl_id_of_json ctx x_2 in
         Ok (TraitMethod (x_0, x_1, x_2))
+    | _ -> Error "")
+
+and format_of_json (ctx : of_json_ctx) (js : json) : (format, string) result =
+  combine_error_msgs js __FUNCTION__
+    (match js with
+    | `String "Json" -> Ok Json
+    | `String "Postcard" -> Ok Postcard
     | _ -> Error "")
 
 and fun_decl_id_of_json (ctx : of_json_ctx) (js : json) :

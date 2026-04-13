@@ -20,6 +20,7 @@ use std::path::PathBuf;
 use std::process::Command;
 
 mod of_json;
+mod of_postcard;
 
 /// `Name` is a complex datastructure; to inspect it we serialize it a little bit.
 fn repr_name(_crate_data: &TranslatedCrate, n: &Name) -> String {
@@ -74,6 +75,7 @@ struct GenerateCtx<'a> {
     type_tree: HashMap<TypeDeclId, HashSet<TypeDeclId>>,
     manual_type_impls: HashMap<TypeDeclId, String>,
     manual_json_impls: HashMap<TypeDeclId, String>,
+    manual_postcard_impls: HashMap<TypeDeclId, String>,
     opaque_for_visitor: HashSet<TypeDeclId>,
 }
 
@@ -82,6 +84,7 @@ impl<'a> GenerateCtx<'a> {
         crate_data: &'a TranslatedCrate,
         manual_type_impls: &[(&str, &str)],
         manual_json_impls: &[(&str, &str)],
+        manual_postcard_impls: &[(&str, &str)],
         opaque_for_visitor: &[&str],
     ) -> Self {
         let mut name_to_type: HashMap<String, &TypeDecl> = Default::default();
@@ -116,6 +119,7 @@ impl<'a> GenerateCtx<'a> {
             type_tree,
             manual_type_impls: Default::default(),
             manual_json_impls: Default::default(),
+            manual_postcard_impls: Default::default(),
             opaque_for_visitor: Default::default(),
         };
         ctx.manual_type_impls = manual_type_impls
@@ -123,6 +127,10 @@ impl<'a> GenerateCtx<'a> {
             .map(|(name, def)| (ctx.id_from_name(name), def.to_string()))
             .collect();
         ctx.manual_json_impls = manual_json_impls
+            .iter()
+            .map(|(name, def)| (ctx.id_from_name(name), def.to_string()))
+            .collect();
+        ctx.manual_postcard_impls = manual_postcard_impls
             .iter()
             .map(|(name, def)| (ctx.id_from_name(name), def.to_string()))
             .collect();
@@ -688,6 +696,7 @@ struct DeriveVisitors {
 #[derive(Clone, Copy)]
 enum GenerationKind {
     OfJson,
+    OfPostcard,
     TypeDecl(Option<DeriveVisitors>),
 }
 
@@ -725,6 +734,12 @@ impl GenerateCodeFor {
                 GenerationKind::OfJson => {
                     let fns = tys
                         .map(|ty| of_json::type_decl_to_deserializer(ctx, ty))
+                        .format("\n");
+                    format!("let rec ___ = ()\n{fns}")
+                }
+                GenerationKind::OfPostcard => {
+                    let fns = tys
+                        .map(|ty| of_postcard::type_decl_to_deserializer(ctx, ty))
                         .format("\n");
                     format!("let rec ___ = ()\n{fns}")
                 }
@@ -876,6 +891,7 @@ fn generate_ml(
         &crate_data,
         manual_type_impls,
         of_json::MANUAL_IMPLS,
+        of_postcard::MANUAL_IMPLS,
         opaque_for_visitor,
     );
 
@@ -1125,17 +1141,32 @@ fn generate_ml(
         GenerateCodeFor {
             template: template_dir.join("GAstOfJson.ml"),
             target: output_dir.join("Generated_GAstOfJson.ml"),
-            markers: vec![(GenerationKind::OfJson, gast_types)],
+            markers: vec![(GenerationKind::OfJson, gast_types.clone())],
+        },
+        GenerateCodeFor {
+            template: template_dir.join("GAstOfPostcard.ml"),
+            target: output_dir.join("Generated_GAstOfPostcard.ml"),
+            markers: vec![(GenerationKind::OfPostcard, gast_types)],
         },
         GenerateCodeFor {
             template: template_dir.join("LlbcOfJson.ml"),
             target: output_dir.join("Generated_LlbcOfJson.ml"),
-            markers: vec![(GenerationKind::OfJson, llbc_types)],
+            markers: vec![(GenerationKind::OfJson, llbc_types.clone())],
+        },
+        GenerateCodeFor {
+            template: template_dir.join("LlbcOfPostcard.ml"),
+            target: output_dir.join("Generated_LlbcOfPostcard.ml"),
+            markers: vec![(GenerationKind::OfPostcard, llbc_types)],
         },
         GenerateCodeFor {
             template: template_dir.join("UllbcOfJson.ml"),
             target: output_dir.join("Generated_UllbcOfJson.ml"),
-            markers: vec![(GenerationKind::OfJson, ullbc_types)],
+            markers: vec![(GenerationKind::OfJson, ullbc_types.clone())],
+        },
+        GenerateCodeFor {
+            template: template_dir.join("UllbcOfPostcard.ml"),
+            target: output_dir.join("Generated_UllbcOfPostcard.ml"),
+            markers: vec![(GenerationKind::OfPostcard, ullbc_types)],
         },
     ];
     for file in generate_code_for {

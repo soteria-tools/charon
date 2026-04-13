@@ -1,8 +1,10 @@
 use crate::ast::*;
+use crate::options::Format;
 use crate::transform::TransformCtx;
 use serde::{Deserialize, Deserializer, Serialize};
 use serde_state::{DeserializeState, SerializeState};
 use std::fs::File;
+use std::io::Write;
 use std::path::Path;
 
 /// The data of a generic crate. We serialize this to pass it to `charon-ml`, so this must be as
@@ -45,7 +47,7 @@ impl<'de> Deserialize<'de> for CrateData {
     }
 }
 
-#[derive(Serialize)]
+#[derive(Clone, Serialize)]
 pub struct CharonVersion(pub String);
 
 impl<'de> Deserialize<'de> for CharonVersion {
@@ -77,9 +79,9 @@ impl CrateData {
         }
     }
 
-    /// Export the translated definitions to a JSON file.
+    /// Export the translated definitions to a file.
     #[allow(clippy::result_unit_err)]
-    pub fn serialize_to_file(&self, target_filename: &Path) -> Result<(), ()> {
+    pub fn serialize_to_file(&self, target_filename: &Path, format: Format) -> Result<(), ()> {
         // Create the directory, if necessary (note that if the target directory
         // is not specified, there is no need to create it: otherwise we
         // couldn't have read the input file in the first place).
@@ -93,12 +95,17 @@ impl CrateData {
         };
 
         // Create the file.
-        let std::io::Result::Ok(outfile) = File::create(target_filename) else {
+        let std::io::Result::Ok(mut outfile) = File::create(target_filename) else {
             error!("Could not open: {:?}", target_filename);
             return Err(());
         };
         // Write to the file.
-        let res = serde_json::to_writer(&outfile, self);
+        let res: Result<(), anyhow::Error> = match format {
+            Format::Json => serde_json::to_writer(&mut outfile, self).map_err(anyhow::Error::from),
+            Format::Postcard => postcard::to_allocvec(&self)
+                .map_err(anyhow::Error::from)
+                .and_then(|bytes| outfile.write_all(&bytes).map_err(anyhow::Error::from)),
+        };
         match res {
             Ok(()) => {}
             Err(err) => {

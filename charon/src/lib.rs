@@ -1,6 +1,7 @@
 //! This library contains utilities to extract the MIR from a Rust project,
 //! by compiling it to an easy-to-use AST called LLBC (Low-Level Borrow Calculus).
-//! This AST is serialized into JSON files.
+//! This AST is serialized into JSON files by default, or postcard files with
+//! `--use-postcard`.
 //!
 //! A good entry point to explore the project is [`driver`](../charon_driver/index.html),
 //! and in particular [`driver::CharonCallbacks`](../charon_driver/driver/struct.CharonCallbacks.html),
@@ -53,14 +54,26 @@ pub fn deserialize_llbc(path: &std::path::Path) -> anyhow::Result<ast::Translate
     use anyhow::Context;
     use serde::Deserialize;
     use std::fs::File;
-    use std::io::BufReader;
+    use std::io::{BufReader, Read};
     let file = File::open(&path)
         .with_context(|| format!("Failed to read llbc file {}", path.display()))?;
     let reader = BufReader::new(file);
-    let mut deserializer = serde_json::Deserializer::from_reader(reader);
-    // Deserialize without recursion limit.
-    deserializer.disable_recursion_limit();
-    // Grow stack space as needed.
-    let deserializer = serde_stacker::Deserializer::new(&mut deserializer);
-    Ok(CrateData::deserialize(deserializer)?.translated)
+    if path
+        .extension()
+        .is_some_and(|ext| ext == std::ffi::OsStr::new("postcard"))
+    {
+        let mut reader = reader;
+        let mut bytes = Vec::new();
+        reader.read_to_end(&mut bytes)?;
+        let crate_data = postcard::from_bytes::<CrateData>(&bytes)
+            .map_err(|e| anyhow::anyhow!("postcard decode failed: {e:?}"))?;
+        Ok(crate_data.translated)
+    } else {
+        let mut deserializer = serde_json::Deserializer::from_reader(reader);
+        // Deserialize without recursion limit.
+        deserializer.disable_recursion_limit();
+        // Grow stack space as needed.
+        let deserializer = serde_stacker::Deserializer::new(&mut deserializer);
+        Ok(CrateData::deserialize(deserializer)?.translated)
+    }
 }

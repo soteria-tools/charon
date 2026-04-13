@@ -1,11 +1,13 @@
 //! Ui tests for the charon compiler. Each `<file>.rs` file in `ui/` will be passed to the charon
 //! driver. The corresponding pretty-printed llbc output will be stored in `<file>.llbc`, and CI
 //! will ensure these stay up-to-date.
+//! We also emit postcard files in `<file>.llbc.postcard`.
 //!
 //! Files can start with special comments that affect the test behavior. Supported magic comments:
 //! see [`HELP_STRING`].
 use anyhow::{anyhow, bail};
 use assert_cmd::prelude::{CommandCargoExt, OutputAssertExt};
+use charon_lib::options::Format;
 use indoc::indoc as unindent;
 use itertools::Itertools;
 use libtest_mimic::Trial;
@@ -159,6 +161,51 @@ fn path_to_crate_name(path: &Path) -> Option<String> {
     )
 }
 
+fn build_cmd(
+    test_case: &Case,
+    deps: &Vec<(String, PathBuf, String)>,
+    format: Format,
+) -> anyhow::Result<Command> {
+    // Run Charon.
+    let mut cmd = Command::cargo_bin("charon")?;
+    cmd.arg("rustc");
+
+    // Charon args
+    cmd.arg("--print-llbc");
+    if test_case.magic_comments.default_options {
+        cmd.arg("--preset=tests");
+    }
+    if !matches!(test_case.magic_comments.test_kind, TestKind::IgnoreWarnings) {
+        cmd.arg("--error-on-warnings");
+    }
+    if matches!(
+        test_case.magic_comments.test_kind,
+        TestKind::KnownPanic | TestKind::KnownFailure
+    ) {
+        cmd.arg("--no-serialize");
+    } else {
+        let dest_file = match format {
+            Format::Json => test_case.input_path.with_extension("llbc"),
+            Format::Postcard => test_case.input_path.with_extension("llbc.postcard"),
+        };
+        cmd.arg("--dest-file");
+        cmd.arg(dest_file);
+    }
+    cmd.args(&test_case.magic_comments.charon_opts);
+
+    // Rustc args
+    cmd.arg("--");
+    cmd.arg(&test_case.input_path);
+    cmd.arg("--crate-name=test_crate");
+    cmd.arg("--crate-type=rlib");
+    cmd.arg("--allow=unused"); // Removes noise
+    for (crate_name, _, rlib_path) in deps {
+        cmd.arg(format!("--extern={crate_name}={rlib_path}"));
+    }
+    cmd.args(&test_case.magic_comments.rustc_opts);
+    Ok(cmd)
+}
+
 fn perform_test(test_case: &Case) -> anyhow::Result<()> {
     // Dependencies
     // Vec of (crate name, path to crate.rs, path to libcrate.rlib).
@@ -189,40 +236,7 @@ fn perform_test(test_case: &Case) -> anyhow::Result<()> {
             .map_err(|e| anyhow!(e.to_string()))?;
     }
 
-    // Run Charon.
-    let mut cmd = Command::cargo_bin("charon")?;
-    cmd.arg("rustc");
-
-    // Charon args
-    cmd.arg("--print-llbc");
-    if test_case.magic_comments.default_options {
-        cmd.arg("--preset=tests");
-    }
-    if !matches!(test_case.magic_comments.test_kind, TestKind::IgnoreWarnings) {
-        cmd.arg("--error-on-warnings");
-    }
-    if matches!(
-        test_case.magic_comments.test_kind,
-        TestKind::KnownPanic | TestKind::KnownFailure
-    ) {
-        cmd.arg("--no-serialize");
-    } else {
-        cmd.arg("--dest-file");
-        cmd.arg(test_case.input_path.with_extension("llbc"));
-    }
-    cmd.args(&test_case.magic_comments.charon_opts);
-
-    // Rustc args
-    cmd.arg("--");
-    cmd.arg(&test_case.input_path);
-    cmd.arg("--crate-name=test_crate");
-    cmd.arg("--crate-type=rlib");
-    cmd.arg("--allow=unused"); // Removes noise
-    for (crate_name, _, rlib_path) in deps {
-        cmd.arg(format!("--extern={crate_name}={rlib_path}"));
-    }
-    cmd.args(&test_case.magic_comments.rustc_opts);
-
+    let mut cmd = build_cmd(test_case, &deps, Format::Json)?;
     let cmd_str = format!(
         "charon {}",
         cmd.get_args().map(OsStr::to_string_lossy).join(" ")
@@ -284,6 +298,22 @@ fn perform_test(test_case: &Case) -> anyhow::Result<()> {
         // Remove the `out` file if there's one from a previous run.
         if test_case.expected.exists() {
             std::fs::remove_file(&test_case.expected)?;
+        }
+    }
+
+    if matches!(
+        test_case.magic_comments.test_kind,
+        TestKind::PrettyLlbc | TestKind::IgnoreWarnings
+    ) {
+        let mut cmd = build_cmd(test_case, &deps, Format::Postcard)?;
+        let cmd_str = format!(
+            "charon {}",
+            cmd.get_args().map(OsStr::to_string_lossy).join(" ")
+        );
+        let output = cmd.output()?;
+        if !output.status.success() {
+            let stderr = String::from_utf8(output.stderr.clone())?;
+            bail!("Command: `{cmd_str}`\nPostcard serialization run failed:\n{stderr}");
         }
     }
 
