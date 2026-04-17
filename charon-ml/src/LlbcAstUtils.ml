@@ -15,8 +15,13 @@ let fun_decl_list_from_crate (crate : crate) : fun_decl list =
     returns None *)
 let get_fun_args (fun_decl : fun_decl) : local list option =
   match fun_decl.body with
-  | Some body -> Some (GAstUtils.locals_get_input_vars body.locals)
-  | None -> None
+  | Structured { locals; _ } | Unstructured { locals; _ } ->
+      Some (GAstUtils.locals_get_input_vars locals)
+  | TraitMethodWithoutDefault
+  | Opaque
+  | Missing
+  | TargetDispatch _
+  | ErrorBody _ -> None
 
 (** Check if a {!type:Charon.LlbcAst.statement} contains loops *)
 let block_has_loops (blk : block) : bool =
@@ -34,8 +39,8 @@ let block_has_loops (blk : block) : bool =
 (** Check if a {!type:Charon.LlbcAst.fun_decl} contains loops *)
 let fun_decl_has_loops (fd : fun_decl) : bool =
   match fd.body with
-  | Some body -> block_has_loops body.body
-  | None -> false
+  | Structured body -> block_has_loops body.body
+  | _ -> false
 
 let crate_get_item_meta (m : crate) (id : item_id) : Types.item_meta option =
   match id with
@@ -91,7 +96,12 @@ class ['self] map_crate =
       let is_global_initializer =
         self#visit_option self#visit_global_decl_id env is_global_initializer
       in
-      let body = self#visit_option self#visit_expr_body env body in
+      let body =
+        match body with
+        | Structured body ->
+            Structured (self#visit_gexpr_body self#visit_block env body)
+        | _ -> body
+      in
       {
         def_id;
         item_meta;
@@ -218,7 +228,9 @@ class ['self] iter_crate =
       self#visit_fun_sig env signature;
       self#visit_item_source env src;
       self#visit_option self#visit_global_decl_id env is_global_initializer;
-      self#visit_option self#visit_expr_body env body
+      match body with
+      | Structured body -> self#visit_gexpr_body self#visit_block env body
+      | _ -> ()
 
     method visit_declaration_group env (g : declaration_group) : unit =
       match g with
