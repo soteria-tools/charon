@@ -345,6 +345,7 @@ pub enum PredicateOrigin {
     // ```
     TraitItem(TraitItemName),
     /// Clauses that are part of a `dyn Trait` type.
+    #[charon::rename("OriginDyn")]
     Dyn,
 }
 
