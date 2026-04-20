@@ -11,6 +11,7 @@
 use anyhow::{Context, Result, bail};
 use assert_cmd::cargo::CommandCargoExt;
 use charon_lib::ast::*;
+use charon_lib::options::SerializationFormat;
 use itertools::Itertools;
 use std::collections::{HashMap, HashSet};
 use std::fs;
@@ -21,6 +22,7 @@ use crate::to_ocaml_ty::DeriveVisitors;
 use crate::util::*;
 
 mod of_json;
+mod of_postcard;
 mod to_ocaml_ty;
 mod util;
 
@@ -82,6 +84,7 @@ impl<'a> GenerateCtx<'a> {
 #[derive(Clone, Copy)]
 enum GenerationKind {
     OfJson,
+    OfPostcard,
     TypeDecl(Option<DeriveVisitors>),
 }
 
@@ -116,6 +119,7 @@ impl GenerateCodeFor {
             ctx.current_ids = names.iter().copied().collect();
             let generated = match kind {
                 GenerationKind::OfJson => ctx.type_decls_to_json(tys),
+                GenerationKind::OfPostcard => ctx.type_decls_to_postcard(tys),
                 GenerationKind::TypeDecl(visitors) => ctx.type_decls_to_ocaml(visitors, tys),
             };
             let placeholder = format!("(* __REPLACE{i}__ *)");
@@ -156,7 +160,8 @@ fn main() -> Result<()> {
         }
     }
 
-    let crate_data: TranslatedCrate = charon_lib::deserialize_llbc(&charon_llbc)?;
+    let crate_data: TranslatedCrate =
+        charon_lib::deserialize_llbc_with_format(&charon_llbc, SerializationFormat::Json)?;
     let output_dir = if std::env::var("IN_CI").as_deref() == Ok("1") {
         dir.join("generated")
     } else {
@@ -418,10 +423,20 @@ fn generate_ml(
             template: template_dir.join("OfJson.ml"),
             target: output_dir.join("Generated_OfJson.ml"),
             markers: vec![
-                (GenerationKind::OfJson, gast_types),
-                (GenerationKind::OfJson, ullbc_types),
-                (GenerationKind::OfJson, llbc_types),
-                (GenerationKind::OfJson, full_ast_types),
+                (GenerationKind::OfJson, gast_types.clone()),
+                (GenerationKind::OfJson, ullbc_types.clone()),
+                (GenerationKind::OfJson, llbc_types.clone()),
+                (GenerationKind::OfJson, full_ast_types.clone()),
+            ],
+        },
+        GenerateCodeFor {
+            template: template_dir.join("OfPostcard.ml"),
+            target: output_dir.join("Generated_OfPostcard.ml"),
+            markers: vec![
+                (GenerationKind::OfPostcard, gast_types),
+                (GenerationKind::OfPostcard, ullbc_types),
+                (GenerationKind::OfPostcard, llbc_types),
+                (GenerationKind::OfPostcard, full_ast_types),
             ],
         },
     ];

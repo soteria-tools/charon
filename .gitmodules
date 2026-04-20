@@ -1,0 +1,3 @@
+[submodule "charon/vendor/serde_state"]
+	path = charon/vendor/serde_state
+	url = https://github.com/soteria-tools/serde_state

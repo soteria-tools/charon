@@ -47,7 +47,7 @@ build-dev-charon-ml: charon-ml/src/CharonVersion.ml
 
 # Generate documentation
 .PHONY: doc
-doc: 
+doc:
 	cd charon && $(MAKE) doc
 	cd charon-ml && $(MAKE) doc
 
@@ -75,7 +75,7 @@ debug-ml-tests: build-charon-ml charon-tests
 .PHONY: generate-ml
 generate-ml:
 	cd charon && cargo build --release && cargo run --release --bin generate-ml
-	cd charon-ml && $(MAKE) format 2> /dev/null
+	cd charon-ml && eval $(opam env) &&  $(MAKE) format 2> /dev/null
 
 # Same as `generate-ml` but don't re-run charon on itself. Useful when developping.
 .PHONY: generate-ml-keep-llbc

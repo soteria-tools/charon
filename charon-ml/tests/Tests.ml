@@ -21,4 +21,12 @@ let () = Test_Deserialize.run_tests llbc_dir
 let () = Test_NameMatcher.run_tests (llbc_dir ^ "/ml-name-matcher-tests.llbc")
 
 let () =
+  Test_NameMatcher.annotated_rust_tests_postcard
+    (llbc_dir ^ "/ml-name-matcher-tests.llbc.postcard")
+
+let () =
   Test_NameMatcher.run_tests (llbc_dir ^ "/ml-mono-name-matcher-tests.llbc")
+
+let () =
+  Test_NameMatcher.annotated_rust_tests_postcard
+    (llbc_dir ^ "/ml-mono-name-matcher-tests.llbc.postcard")

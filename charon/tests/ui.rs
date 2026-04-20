@@ -218,7 +218,7 @@ fn perform_test(test_case: &Case) -> anyhow::Result<()> {
     cmd.arg("--crate-name=test_crate");
     cmd.arg("--crate-type=rlib");
     cmd.arg("--allow=unused"); // Removes noise
-    for (crate_name, _, rlib_path) in deps {
+    for (crate_name, _, rlib_path) in &deps {
         cmd.arg(format!("--extern={crate_name}={rlib_path}"));
     }
     cmd.args(&test_case.magic_comments.rustc_opts);
@@ -285,6 +285,42 @@ fn perform_test(test_case: &Case) -> anyhow::Result<()> {
         if test_case.expected.exists() {
             std::fs::remove_file(&test_case.expected)?;
         }
+    }
+
+    if output.status.success()
+        && !matches!(test_case.magic_comments.test_kind, TestKind::Skip)
+        && !test_case
+            .magic_comments
+            .charon_opts
+            .iter()
+            .any(|opt| opt == "--no-serialize")
+    {
+        let llbc_postcard_path = test_case.input_path.with_extension("llbc.postcard");
+        let mut postcard_cmd = Command::cargo_bin("charon")?;
+        postcard_cmd.arg("rustc");
+        postcard_cmd.arg("--format=postcard");
+        if test_case.magic_comments.default_options {
+            postcard_cmd.arg("--preset=tests");
+        }
+        if !matches!(test_case.magic_comments.test_kind, TestKind::IgnoreWarnings) {
+            postcard_cmd.arg("--error-on-warnings");
+        }
+        postcard_cmd.arg("--dest-file");
+        postcard_cmd.arg(&llbc_postcard_path);
+        postcard_cmd.args(&test_case.magic_comments.charon_opts);
+        postcard_cmd.arg("--");
+        postcard_cmd.arg(&test_case.input_path);
+        postcard_cmd.arg("--crate-name=test_crate");
+        postcard_cmd.arg("--crate-type=rlib");
+        postcard_cmd.arg("--allow=unused");
+        for (crate_name, _, rlib_path) in &deps {
+            postcard_cmd.arg(format!("--extern={crate_name}={rlib_path}"));
+        }
+        postcard_cmd.args(&test_case.magic_comments.rustc_opts);
+        postcard_cmd
+            .assert()
+            .try_success()
+            .map_err(|e| anyhow!(e.to_string()))?;
     }
 
     Ok(())

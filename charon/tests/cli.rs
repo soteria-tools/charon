@@ -52,6 +52,39 @@ fn charon_pretty_print() -> Result<()> {
 }
 
 #[test]
+fn charon_decode_postcard() -> Result<()> {
+    charon(
+        &[
+            "rustc",
+            "--format=postcard",
+            "--dest-file",
+            "arrays.llbc.postcard",
+            "--",
+            "--crate-type=rlib",
+            "tests/ui/arrays.rs",
+        ],
+        ".",
+        |_, _| {
+            let postcard = "arrays.llbc.postcard";
+            ensure!(std::fs::exists(postcard)?, "{postcard} doesn't exist!");
+
+            charon(
+                &["decode", "--format=postcard", "--input", postcard],
+                ".",
+                |stdout, _| {
+                    let search = "\"crate_name\"";
+                    ensure!(
+                        stdout.contains(search),
+                        "Decoded output of {postcard} is:\n{stdout:?}\nIt doesn't contain {search:?}."
+                    );
+                    Ok(())
+                },
+            )
+        },
+    )
+}
+
+#[test]
 fn charon_version() -> Result<()> {
     charon(&["version"], ".", |stdout, cmd| {
         let version = charon_lib::VERSION;

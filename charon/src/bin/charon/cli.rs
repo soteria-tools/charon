@@ -1,4 +1,4 @@
-use charon_lib::options::CliOpts;
+use charon_lib::options::{CliOpts, SerializationFormat};
 use clap::{Args, Parser, Subcommand};
 use std::path::PathBuf;
 
@@ -19,6 +19,8 @@ pub enum Charon {
     ToolchainPath(ToolchainPathArgs),
     /// Pretty-print the given llbc file.
     PrettyPrint(PrettyPrintArgs),
+    /// Decode a serialized (U)LLBC file to JSON.
+    Decode(DecodeArgs),
     /// Print the version.
     Version,
 }
@@ -28,6 +30,23 @@ pub enum Charon {
 pub struct PrettyPrintArgs {
     /// Single file path to llbc or ullbc
     pub file: PathBuf,
+    /// Serialization format of the input file.
+    #[arg(long, value_enum, default_value_t)]
+    pub format: SerializationFormat,
+}
+
+/// Decode an llbc/ullbc file and emit JSON.
+#[derive(Args, Debug)]
+pub struct DecodeArgs {
+    /// Input file path.
+    #[arg(long)]
+    pub input: PathBuf,
+    /// Serialization format of the input file.
+    #[arg(long, value_enum, default_value_t)]
+    pub format: SerializationFormat,
+    /// Output JSON file path; defaults to stdout.
+    #[arg(long)]
+    pub output: Option<PathBuf>,
 }
 
 /// Usage: `charon cargo [charon options] -- [rustc options]`

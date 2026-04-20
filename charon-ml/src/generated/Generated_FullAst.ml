@@ -175,14 +175,17 @@ and cli_options = {
       (** Pretty-print the final LLBC (after all the cleaning micro-passes). *)
   dest_dir : path_buf option;
       (** The destination directory. Files will be generated as
-          [<dest_dir>/<crate_name>.{u}llbc], unless [dest_file] is set.
-          [dest_dir] defaults to the current directory. *)
+          [<dest_dir>/<crate_name>.{u}llbc] for json and
+          [<dest_dir>/<crate_name>.{u}llbc.postcard] for postcard, unless
+          [dest_file] is set. [dest_dir] defaults to the current directory. *)
   dest_file : path_buf option;
-      (** The destination file. By default [<dest_dir>/<crate_name>.llbc]. If
-          this is set we ignore [dest_dir]. *)
+      (** The destination file. By default this depends on [format] and [ullbc].
+          If this is set we ignore [dest_dir]. *)
   no_dedup_serialized_ast : bool;
       (** Don't deduplicate values (types, trait refs) in the .(u)llbc file.
           This makes the file easier to inspect. *)
+  format : serialization_format;
+      (** Serialization format for emitted (U)LLBC files. *)
   no_serialize : bool;  (** Don't serialize the final (U)LLBC to a file. *)
   abort_on_error : bool;
       (** Panic on the first error. This is useful for debugging. *)
@@ -262,6 +265,8 @@ and preset =
   | Eurydice
   | Soteria
   | Tests
+
+and serialization_format = Json | Postcard
 
 and target_info = {
   target_pointer_size : int;  (** The pointer size of the target in bytes. *)
