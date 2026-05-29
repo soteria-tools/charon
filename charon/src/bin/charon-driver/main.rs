@@ -128,6 +128,12 @@ pub fn transformation_passes(options: &CliOpts) -> Vec<Pass> {
     passes
 }
 
+/// Run charon in server mode. Blocks until the client sends `shutdown`.
+fn run_charon_server() -> Result<usize, CharonFailure> {
+    driver::run_rustc_driver_server()?;
+    Ok(0)
+}
+
 /// Run charon. Returns the number of warnings generated.
 fn run_charon() -> Result<usize, CharonFailure> {
     // Run the driver machinery.
@@ -162,8 +168,12 @@ fn main() {
     // Initialize the logger
     logger::initialize_logger();
 
+    // Dispatch to server mode when requested.
+    let is_server = std::env::var("CHARON_SERVER").is_ok();
+    let run = if is_server { run_charon_server } else { run_charon };
+
     // Catch any and all panics coming from charon to display a clear error.
-    let res = panic::catch_unwind(run_charon)
+    let res = panic::catch_unwind(run)
         .map_err(|_| CharonFailure::Panic)
         .and_then(|x| x);
 

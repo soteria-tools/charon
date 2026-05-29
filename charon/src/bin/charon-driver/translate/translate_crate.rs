@@ -19,6 +19,7 @@ use rustc_middle::ty::TyCtxt;
 use rustc_span::sym;
 use std::cell::RefCell;
 use std::collections::HashSet;
+use std::io::{BufRead, Write};
 use std::path::PathBuf;
 
 use super::translate_ctx::*;
@@ -26,6 +27,9 @@ use crate::hax;
 use crate::hax::SInto;
 use charon_lib::ast::*;
 use charon_lib::options::{CliOpts, StartFrom, TranslateOptions};
+use charon_lib::server::{
+    CrateInfoResult, Request, RequestBody, Response, ResponseData, ResponseResult, StatsResult,
+};
 use charon_lib::transform::TransformCtx;
 use macros::VariantIndexArity;
 
@@ -952,4 +956,380 @@ pub fn translate<'tcx>(
         translated: ctx.translated,
         errors: ctx.errors,
     })
+}
+
+// ──────────────────────────────────────────────────────────────────────────────
+// Server (on-demand translation) mode
+// ──────────────────────────────────────────────────────────────────────────────
+
+/// Entry point for server mode. Initialises the translation context the same way as [`translate`]
+/// but, instead of draining the worklist, enters an RPC loop that reads [`Request`]s from stdin
+/// and writes [`Response`]s to stdout (newline-delimited JSON).
+///
+/// This function blocks until the client sends a `shutdown` request or stdin is closed, then
+/// returns. It is designed to run inside rustc's `after_expansion` callback so that `TyCtxt`
+/// stays alive for the entire session.
+#[tracing::instrument(skip(tcx, error_ctx))]
+pub fn translate_server<'tcx>(
+    tcx: TyCtxt<'tcx>,
+    cli_options: &CliOpts,
+    mut error_ctx: ErrorCtx,
+    sysroot: PathBuf,
+) {
+    let translate_options = TranslateOptions::new(&mut error_ctx, cli_options);
+
+    let traits_to_remove: HashSet<rustc_hir::def_id::DefId> = {
+        let hax_state = hax::state::State::new(tcx, hax::options::Options::default());
+        translate_options
+            .hide_traits
+            .iter()
+            .flat_map(|pat| super::resolve_path::def_path_def_ids(&hax_state, pat, true).unwrap())
+            .collect()
+    };
+    let hax_state = hax::state::State::new(
+        tcx,
+        hax::options::Options {
+            inline_anon_consts: !translate_options.raw_consts,
+            bounds_options: hax::options::BoundsOptions {
+                add_destruct_bounds: translate_options.add_destruct_bounds,
+                remove_traits: traits_to_remove,
+            },
+        },
+    );
+
+    let crate_def_id: hax::DefId = rustc_span::def_id::CRATE_DEF_ID
+        .to_def_id()
+        .sinto(&hax_state);
+    let crate_name = crate_def_id.crate_name(&hax_state).to_string();
+    trace!("# Crate (server mode): {}", crate_name);
+
+    let mut ctx = TranslateCtx {
+        tcx,
+        sysroot,
+        hax_state,
+        options: translate_options,
+        errors: RefCell::new(error_ctx),
+        translated: TranslatedCrate {
+            crate_name,
+            options: cli_options.clone(),
+            ..TranslatedCrate::default()
+        },
+        method_status: Default::default(),
+        assoc_item_id_map: Default::default(),
+        id_map: Default::default(),
+        reverse_id_map: Default::default(),
+        file_to_id: Default::default(),
+        items_to_translate: Default::default(),
+        processed: Default::default(),
+        translate_stack: Default::default(),
+        cached_item_metas: Default::default(),
+        cached_names: Default::default(),
+        lt_mutability_computer: Default::default(),
+    };
+    ctx.register_target_info();
+
+    // Register startup items (same logic as batch mode), but do NOT drain the worklist.
+    // Items are registered (get IDs / names) so clients can discover them, but bodies are
+    // only translated on explicit `get` requests.
+    for start_from in ctx.options.start_from.clone() {
+        match start_from {
+            StartFrom::Pattern { pattern, strict } => {
+                match super::resolve_path::def_path_def_ids(&ctx.hax_state, &pattern, strict) {
+                    Ok(resolved) => {
+                        for def_id in resolved {
+                            let def_id: hax::DefId = def_id.sinto(&ctx.hax_state);
+                            ctx.enqueue_module_item(&def_id);
+                        }
+                    }
+                    Err(err) => {
+                        register_error!(
+                            ctx,
+                            Span::dummy(),
+                            "when processing starting pattern `{pattern}`: {err}"
+                        );
+                    }
+                }
+            }
+            StartFrom::Attribute(attr_name) => {
+                let attr_path = attr_name
+                    .split("::")
+                    .map(rustc_span::Symbol::intern)
+                    .collect_vec();
+                let mut add_if_attr_matches = |ldid: rustc_hir::def_id::LocalDefId| {
+                    let def_id: hax::DefId = ldid.to_def_id().sinto(&ctx.hax_state);
+                    if !matches!(def_id.kind, hax::DefKind::Mod)
+                        && def_id.attrs(tcx).iter().any(|a| a.path_matches(&attr_path))
+                    {
+                        ctx.enqueue_module_item(&def_id);
+                    }
+                };
+                for ldid in tcx.hir_crate_items(()).definitions() {
+                    add_if_attr_matches(ldid)
+                }
+            }
+            StartFrom::Pub => {
+                let mut add_if_matches = |ldid: rustc_hir::def_id::LocalDefId| {
+                    let def_id: hax::DefId = ldid.to_def_id().sinto(&ctx.hax_state);
+                    if !matches!(def_id.kind, hax::DefKind::Mod)
+                        && def_id.visibility(tcx) == Some(true)
+                    {
+                        ctx.enqueue_module_item(&def_id);
+                    }
+                };
+                for ldid in tcx.hir_crate_items(()).definitions() {
+                    add_if_matches(ldid)
+                }
+            }
+        }
+    }
+
+    if ctx.errors.borrow().has_errors() {
+        log::error!("charon server: errors during initialization, aborting");
+        return;
+    }
+
+    serve_rpc_loop(&mut ctx);
+}
+
+/// Main RPC loop. When `CHARON_SERVER_SOCKET` is set (the normal case when launched via
+/// `charon serve`), binds a Unix-domain socket at that path, waits for one client to connect, and
+/// serves requests until the client sends `shutdown` or disconnects.
+///
+/// Falls back to stdin/stdout when the env var is absent (useful for testing the driver directly).
+fn serve_rpc_loop(ctx: &mut TranslateCtx<'_>) {
+    #[cfg(unix)]
+    if let Ok(socket_path) = std::env::var("CHARON_SERVER_SOCKET") {
+        use std::os::unix::net::UnixListener;
+        let listener = match UnixListener::bind(&socket_path) {
+            Ok(l) => l,
+            Err(e) => {
+                log::error!("charon server: failed to bind socket `{socket_path}`: {e}");
+                return;
+            }
+        };
+        trace!("charon server: listening on {socket_path}");
+        match listener.accept() {
+            Ok((stream, _)) => {
+                let reader = std::io::BufReader::new(
+                    stream.try_clone().expect("failed to clone socket"),
+                );
+                let writer = std::io::BufWriter::new(stream);
+                serve_rpc_io(ctx, reader, writer);
+            }
+            Err(e) => {
+                log::error!("charon server: accept failed: {e}");
+            }
+        }
+        let _ = std::fs::remove_file(&socket_path);
+        return;
+    }
+
+    // Fallback: stdin/stdout (for direct driver invocation, e.g. in tests).
+    let stdin = std::io::stdin();
+    let stdout = std::io::stdout();
+    serve_rpc_io(
+        ctx,
+        std::io::BufReader::new(stdin.lock()),
+        std::io::BufWriter::new(stdout.lock()),
+    );
+}
+
+fn serve_rpc_io(ctx: &mut TranslateCtx<'_>, mut reader: impl BufRead, mut writer: impl Write) {
+    loop {
+        let mut line = String::new();
+        match reader.read_line(&mut line) {
+            Ok(0) => {
+                trace!("charon server: connection closed, exiting");
+                break;
+            }
+            Ok(_) => {}
+            Err(e) => {
+                log::error!("charon server: IO error reading request: {e}");
+                break;
+            }
+        }
+
+        let line = line.trim();
+        if line.is_empty() {
+            continue;
+        }
+
+        let request: Request = match serde_json::from_str(line) {
+            Ok(r) => r,
+            Err(e) => {
+                let response = Response {
+                    id: 0,
+                    result: ResponseResult::err(format!("Failed to parse request: {e}")),
+                };
+                write_response(&mut writer, &response);
+                continue;
+            }
+        };
+
+        let is_shutdown = matches!(request.body, RequestBody::Shutdown);
+        let result = handle_request(ctx, &request.body);
+        let response = Response {
+            id: request.id,
+            result: match result {
+                Ok(data) => ResponseResult::ok(data),
+                Err(e) => ResponseResult::err(e),
+            },
+        };
+        write_response(&mut writer, &response);
+
+        if is_shutdown {
+            break;
+        }
+    }
+}
+
+fn write_response(writer: &mut impl Write, response: &Response) {
+    match serde_json::to_string(response) {
+        Ok(json) => {
+            if let Err(e) = writeln!(writer, "{json}") {
+                log::error!("charon server: IO error writing response: {e}");
+            }
+        }
+        Err(e) => {
+            log::error!("charon server: failed to serialize response: {e}");
+            let err_json = serde_json::to_string(&Response {
+                id: response.id,
+                result: ResponseResult::err(format!("Internal serialization error: {e}")),
+            })
+            .unwrap_or_else(|_| r#"{"id":0,"status":"error","message":"fatal"}"#.to_owned());
+            let _ = writeln!(writer, "{err_json}");
+        }
+    }
+    let _ = writer.flush();
+}
+
+fn handle_request(
+    ctx: &mut TranslateCtx<'_>,
+    body: &RequestBody,
+) -> Result<ResponseData, String> {
+    match body {
+        RequestBody::CrateInfo => Ok(ResponseData::CrateInfo(CrateInfoResult {
+            crate_name: ctx.translated.crate_name.clone(),
+            charon_version: charon_lib::VERSION.to_owned(),
+            options: ctx.translated.options.clone(),
+        })),
+
+        RequestBody::Resolve { pattern } => {
+            let ids = resolve_pattern_to_ids(ctx, pattern);
+            Ok(ResponseData::Resolve(ids))
+        }
+
+        RequestBody::Get { id } => {
+            let id = *id;
+            Ok(ResponseData::Get(get_item_json(ctx, id)))
+        }
+
+        RequestBody::Name { id } => {
+            let id = *id;
+            let json = ctx.translated.item_names.get(&id).map(|name| {
+                serde_json::to_value(serde_state::WithState::new(name, &()))
+                    .unwrap_or(serde_json::Value::Null)
+            });
+            Ok(ResponseData::Name(json))
+        }
+
+        RequestBody::File { id } => {
+            let id = *id;
+            Ok(ResponseData::File(ctx.translated.files.get(id).cloned()))
+        }
+
+        RequestBody::Stats => Ok(ResponseData::Stats(StatsResult {
+            items_translated: ctx.processed.len(),
+            items_registered: ctx.id_map.len(),
+        })),
+
+        RequestBody::Shutdown => Ok(ResponseData::Shutdown),
+    }
+}
+
+/// Resolve a name pattern to the [`ItemId`]s of all matching items. Items are registered (assigned
+/// an id and a name) but not translated.
+fn resolve_pattern_to_ids(ctx: &mut TranslateCtx<'_>, pattern: &str) -> Vec<ItemId> {
+    use charon_lib::name_matcher::NamePattern;
+    let parsed = match NamePattern::parse(pattern) {
+        Ok(p) => p,
+        Err(e) => {
+            trace!("charon server: failed to parse pattern `{pattern}`: {e}");
+            return vec![];
+        }
+    };
+    let def_ids =
+        match super::resolve_path::def_path_def_ids(&ctx.hax_state, &parsed, false) {
+            Ok(ids) => ids,
+            Err(e) => {
+                trace!("charon server: resolve `{pattern}` failed: {e}");
+                return vec![];
+            }
+        };
+
+    let mut result = Vec::new();
+    for did in def_ids {
+        let def_id: hax::DefId = did.sinto(&ctx.hax_state);
+        let Some(kind) = ctx.base_kind_for_item(&def_id) else {
+            continue;
+        };
+        let item_src = TransItemSource::polymorphic(&def_id, kind);
+        if let Some(id) = ctx.register_no_enqueue::<ItemId>(&None, &item_src) {
+            result.push(id);
+        }
+    }
+    result
+}
+
+/// Translate the item with the given id on demand (if not already done) and return its JSON
+/// representation, or `None` if the id is unknown or translation failed.
+fn get_item_json(ctx: &mut TranslateCtx<'_>, id: ItemId) -> Option<serde_json::Value> {
+    // Already translated — return immediately.
+    if ctx.translated.get_item(id).is_some() {
+        return ctx.translated.get_item(id).map(item_ref_to_json);
+    }
+
+    // Find the source registered for this id.
+    let item_src = ctx.reverse_id_map.get(&id)?.clone();
+
+    // Already attempted (and failed) — don't retry.
+    if ctx.processed.contains(&item_src) {
+        return None;
+    }
+
+    // Translate. `translate_item` may enqueue dependencies, but we won't drain the queue here;
+    // dependencies will be translated on their own `get` requests.
+    ctx.processed.insert(item_src.clone());
+    ctx.translate_item(&item_src);
+
+    ctx.translated.get_item(id).map(item_ref_to_json)
+}
+
+/// Serialize an [`ItemRef`] to a JSON value `{ "kind": "Fun"|..., "decl": <ast node> }`.
+/// Serialization uses no hash-cons deduplication (equivalent to `--no-dedup-serialized-ast`).
+fn item_ref_to_json(item: ItemRef<'_>) -> serde_json::Value {
+    use serde_state::WithState;
+    let (kind, decl) = match item {
+        ItemRef::Fun(f) => (
+            "Fun",
+            serde_json::to_value(WithState::new(f, &())).unwrap_or(serde_json::Value::Null),
+        ),
+        ItemRef::Type(t) => (
+            "Type",
+            serde_json::to_value(WithState::new(t, &())).unwrap_or(serde_json::Value::Null),
+        ),
+        ItemRef::Global(g) => (
+            "Global",
+            serde_json::to_value(WithState::new(g, &())).unwrap_or(serde_json::Value::Null),
+        ),
+        ItemRef::TraitDecl(td) => (
+            "TraitDecl",
+            serde_json::to_value(WithState::new(td, &())).unwrap_or(serde_json::Value::Null),
+        ),
+        ItemRef::TraitImpl(ti) => (
+            "TraitImpl",
+            serde_json::to_value(WithState::new(ti, &())).unwrap_or(serde_json::Value::Null),
+        ),
+    };
+    serde_json::json!({ "kind": kind, "decl": decl })
 }

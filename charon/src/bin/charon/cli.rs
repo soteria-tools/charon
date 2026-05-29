@@ -16,6 +16,10 @@ pub enum Charon {
     /// Runs charon on a cargo project. If a `[package.metadata.charon]` section is present in
     /// `Cargo.toml`, options are also read from it.
     Cargo(CargoArgs),
+    /// Start a long-lived server that translates items on demand over a JSON-lines protocol on
+    /// stdin/stdout. The client sends [`charon_lib::server::Request`] objects (one per line) and
+    /// receives [`charon_lib::server::Response`] objects (one per line).
+    Serve(ServeArgs),
     /// Print the path to the rustc toolchain used by charon.
     ToolchainPath(ToolchainPathArgs),
     /// Pretty-print the given llbc file.
@@ -48,6 +52,20 @@ pub struct RustcArgs {
 /// Usage: `charon cargo [charon options] -- [cargo build options]`
 #[derive(clap::Args, Debug)]
 pub struct CargoArgs {
+    #[command(flatten)]
+    pub opts: CliOpts,
+
+    /// Args that `cargo build` accepts.
+    #[arg(last = true)]
+    pub cargo: Vec<String>,
+}
+
+/// Usage: `charon serve [charon options] -- [cargo build options]`
+///
+/// Starts a server that translates items on demand. The server reads JSON-lines requests from
+/// stdin and writes JSON-lines responses to stdout. See [`charon_lib::server`] for the protocol.
+#[derive(clap::Args, Debug)]
+pub struct ServeArgs {
     #[command(flatten)]
     pub opts: CliOpts,
 

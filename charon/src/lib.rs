@@ -48,6 +48,7 @@ pub mod export;
 pub mod name_matcher;
 pub mod options;
 pub mod pretty;
+pub mod server;
 pub mod transform;
 
 // Re-export all the ast modules so we can keep the old import structure.

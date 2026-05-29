@@ -86,6 +86,84 @@ fn setup_compiler(config: &mut Config, options: &CliOpts, do_translate: bool) {
     set_mir_options(config);
 }
 
+/// Run the rustc driver in server mode. Returns `None` if the crate is not the selected one.
+/// Otherwise enters the RPC loop (blocking until the client sends `shutdown`) and returns `Some(())`.
+pub fn run_rustc_driver_server() -> Result<Option<()>, CharonFailure> {
+    let mut compiler_args: Vec<String> = env::args().skip(1).collect();
+    trace!(
+        "charon-driver (server) called with args: {}",
+        compiler_args.iter().format(" ")
+    );
+
+    let is_workspace_dependency =
+        env::var("CHARON_USING_CARGO").is_ok() && env::var("CARGO_PRIMARY_PACKAGE").is_err();
+    let is_target = arg_value(&compiler_args, "--target").is_some();
+    let is_selected_crate = !is_workspace_dependency && is_target;
+
+    if !is_selected_crate {
+        trace!("Skipping charon server; running compiler normally instead.");
+        run_compiler_with_callbacks(compiler_args, &mut RunCompilerNormallyCallbacks)?;
+        return Ok(None);
+    }
+
+    let mut error_ctx = ErrorCtx::new();
+    let mut options: options::CliOpts = match env::var(options::CHARON_ARGS) {
+        Ok(opts) => serde_json::from_str(opts.as_str()).unwrap(),
+        Err(_) => {
+            register_error!(
+                error_ctx,
+                no_crate,
+                "environment variable `CHARON_ARGS` not set"
+            );
+            return Err(CharonFailure::CharonError(1));
+        }
+    };
+    options.apply_preset();
+    error_ctx.continue_on_failure = !options.abort_on_error;
+    error_ctx.error_on_warnings = options.error_on_warnings;
+
+    for extra_flag in options.rustc_args.iter().cloned() {
+        compiler_args.push(extra_flag);
+    }
+
+    let mut callback = CharonServerCallbacks {
+        options: &options,
+        error_ctx: Some(error_ctx),
+    };
+    run_compiler_with_callbacks(compiler_args, &mut callback)?;
+    Ok(Some(()))
+}
+
+/// Callbacks for server mode. Runs the RPC loop inside `after_expansion`.
+pub struct CharonServerCallbacks<'a> {
+    options: &'a CliOpts,
+    error_ctx: Option<ErrorCtx>,
+}
+
+impl<'a> Callbacks for CharonServerCallbacks<'a> {
+    fn config(&mut self, config: &mut Config) {
+        setup_compiler(config, self.options, true);
+    }
+
+    fn after_expansion<'tcx>(&mut self, compiler: &Compiler, tcx: TyCtxt<'tcx>) -> Compilation {
+        rustc_hir::def_id::DEF_ID_DEBUG
+            .swap(&(def_id_debug as fn(_, &mut fmt::Formatter<'_>) -> _));
+
+        translate_crate::translate_server(
+            tcx,
+            self.options,
+            self.error_ctx.take().unwrap(),
+            compiler.sess.opts.sysroot.path().to_owned(),
+        );
+
+        Compilation::Continue
+    }
+
+    fn after_analysis<'tcx>(&mut self, _: &Compiler, _: TyCtxt<'tcx>) -> Compilation {
+        Compilation::Stop
+    }
+}
+
 /// Run the rustc driver with our custom hooks. Returns `None` if the crate was not compiled with
 /// charon (e.g. because it was a dependency). Otherwise returns the translated crate, ready for
 /// post-processing transformations.

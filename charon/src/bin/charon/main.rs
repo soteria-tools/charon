@@ -42,6 +42,12 @@ use itertools::Itertools;
 use std::{env, process::ExitStatus};
 use toolchain::toolchain_path;
 
+/// Environment variable set when running in server mode so `charon-driver` knows to start
+/// the RPC loop instead of writing an output file.
+pub const CHARON_SERVER: &str = "CHARON_SERVER";
+/// Path of the Unix-domain socket the driver should listen on (set by `charon serve`).
+pub const CHARON_SERVER_SOCKET: &str = "CHARON_SERVER_SOCKET";
+
 #[macro_use]
 extern crate charon_lib;
 
@@ -61,6 +67,12 @@ pub fn main() -> Result<()> {
                 charon_lib::deserialize_llbc_with_format(&pretty_print.file, pretty_print.format)?;
             println!("{krate}");
             ExitStatus::default()
+        }
+        Charon::Serve(subcmd_serve) => {
+            let mut options = subcmd_serve.opts;
+            // Server mode does not produce an output file.
+            options.no_serialize = true;
+            serve_with_cargo(options, subcmd_serve.cargo)?
         }
         Charon::Cargo(subcmd_cargo) => {
             let mut options = subcmd_cargo.opts;
@@ -173,6 +185,89 @@ fn translate_multi_target(
         .map_err(|()| anyhow::anyhow!("failed to serialize merged crate"))?;
 
     Ok(ExitStatus::default())
+}
+
+fn serve_with_cargo(
+    mut options: CliOpts,
+    cargo_args: Vec<String>,
+) -> anyhow::Result<ExitStatus> {
+    ensure_rustup();
+    if let Some(toml) = toml_config::read_toml() {
+        options = toml.apply(options);
+    }
+    options.validate()?;
+
+    // Create a temporary directory to hold the Unix socket.
+    let socket_dir = tempfile::tempdir().context("failed to create socket tmpdir")?;
+    let socket_path = socket_dir.path().join("charon_server.sock");
+
+    let mut cmd = toolchain::in_toolchain("cargo")?;
+    cmd.env("RUSTC_WRAPPER", toolchain::driver_path());
+    cmd.env("CHARON_USING_CARGO", "1");
+    cmd.env_remove("CARGO_PRIMARY_PACKAGE");
+    cmd.env(CHARON_SERVER, "1");
+    cmd.env(CHARON_SERVER_SOCKET, socket_path.to_str().unwrap());
+    cmd.env(CHARON_ARGS, serde_json::to_string(&options).unwrap());
+    cmd.arg("build");
+    if arg_value(&cargo_args, "--target").is_none() {
+        cmd.arg("--target");
+        cmd.arg(&get_rustc_version()?.host);
+    }
+    cmd.args(cargo_args);
+    trace!("running server {cmd:?}");
+
+    // Spawn cargo. The target crate's driver will create the socket in after_expansion.
+    let mut cargo_child = cmd.spawn().expect("could not run cargo");
+
+    // Wait (with a generous deadline) for the driver to bind the socket.
+    let deadline = std::time::Instant::now() + std::time::Duration::from_secs(300);
+    loop {
+        if socket_path.exists() {
+            break;
+        }
+        if std::time::Instant::now() > deadline {
+            anyhow::bail!("timed out waiting for charon server socket");
+        }
+        if let Ok(Some(status)) = cargo_child.try_wait() {
+            if status.success() {
+                // Cargo finished without creating the socket (nothing to (re)compile).
+                return Ok(status);
+            }
+            anyhow::bail!("cargo failed before charon server socket was created");
+        }
+        std::thread::sleep(std::time::Duration::from_millis(50));
+    }
+
+    // Connect to the driver's Unix socket.
+    #[cfg(unix)]
+    {
+        use std::os::unix::net::UnixStream;
+        let stream = UnixStream::connect(&socket_path)
+            .context("failed to connect to charon server socket")?;
+        let stream_write = stream.try_clone().context("failed to clone socket")?;
+
+        // Forward the user's stdin to the socket in a background thread.
+        std::thread::spawn(move || {
+            let mut writer = std::io::BufWriter::new(stream_write);
+            let stdin = std::io::stdin();
+            let _ = std::io::copy(&mut stdin.lock(), &mut writer);
+        });
+
+        // Forward the socket to the user's stdout in the main thread (until the driver closes it).
+        {
+            use std::io::Write;
+            let mut reader = std::io::BufReader::new(stream);
+            let stdout = std::io::stdout();
+            let _ = std::io::copy(&mut reader, &mut stdout.lock());
+            let _ = stdout.lock().flush();
+        }
+    }
+    #[cfg(not(unix))]
+    {
+        anyhow::bail!("`charon serve` requires a Unix system (Unix-domain sockets)");
+    }
+
+    Ok(cargo_child.wait().expect("failed to wait for cargo"))
 }
 
 fn translate_with_cargo(
