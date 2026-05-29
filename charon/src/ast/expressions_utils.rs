@@ -69,7 +69,8 @@ impl Place {
                 tref.generics.types[0].clone()
             }
             Adt(..) | TypeVar(_) | Literal(_) | Never | TraitType(..) | DynTrait(..)
-            | FnPtr(..) | FnDef(..) | PtrMetadata(..) | Array(..) | Slice(_) | Error(..) => {
+            | FnPtr(..) | FnDef(..) | PtrMetadata(..) | Array(..) | Slice(_) | Pat(..)
+            | Error(..) => {
                 panic!("internal type error")
             }
         };
@@ -171,7 +172,7 @@ impl ProjectionElem {
                         tref.generics.types[0].clone()
                     }
                     Adt(..) | TypeVar(_) | Literal(_) | Never | TraitType(..) | DynTrait(..)
-                    | Array(..) | Slice(..) | FnPtr(..) | FnDef(..) | PtrMetadata(..)
+                    | Array(..) | Slice(..) | FnPtr(..) | FnDef(..) | PtrMetadata(..) | Pat(..)
                     | Error(..) => {
                         // Type error
                         return None;

@@ -1,0 +1,417 @@
+# Final LLBC before serialization:
+
+// Full name: core::marker::Destruct
+#[lang_item("destruct")]
+pub trait Destruct<Self>
+{
+    fn drop_in_place = drop_in_place<Self>
+    non-dyn-compatible
+}
+
+// Full name: core::marker::MetaSized
+#[lang_item("meta_sized")]
+pub trait MetaSized<Self>
+
+// Full name: core::marker::Sized
+#[lang_item("sized")]
+pub trait Sized<Self>
+{
+    parent_clause0 : [@TraitClause0]: MetaSized<Self>
+    non-dyn-compatible
+}
+
+// Full name: core::clone::Clone
+#[lang_item("clone")]
+pub trait Clone<Self>
+{
+    parent_clause0 : [@TraitClause0]: Sized<Self>
+    fn clone<'_0_1> = core::clone::Clone::clone<'_0_1, Self>[Self]
+    fn clone_from<'_0_1, '_1_1, [@TraitClause0_1]: Destruct<Self>> = core::clone::Clone::clone_from<'_0_1, '_1_1, Self>[Self, @TraitClause0_1]
+    non-dyn-compatible
+}
+
+#[lang_item("clone_fn")]
+pub fn core::clone::Clone::clone<'_0, Self>(_1: &'_0 Self) -> Self
+where
+    [@TraitClause0]: Clone<Self>,
+= <method_without_default_body>
+
+// Full name: core::marker::Destruct::drop_in_place
+unsafe fn drop_in_place<Self>(_1: *mut Self)
+= <missing>
+
+pub fn core::clone::Clone::clone_from<'_0, '_1, Self>(self_1: &'_0 mut Self, source_2: &'_1 Self)
+where
+    [@TraitClause0]: Clone<Self>,
+    [@TraitClause1]: Destruct<Self>,
+{
+    let _0: (); // return
+    let self_1: &'1 mut Self; // arg #1
+    let source_2: &'3 Self; // arg #2
+    let _3: Self; // anonymous local
+
+    _0 = ()
+    storage_live(_3)
+    _3 = @TraitClause0::clone<'5>(move source_2)
+    drop[@TraitClause1::drop_in_place] (*self_1)
+    (*self_1) = move _3
+    storage_dead(_3)
+    return
+}
+
+// Full name: core::clone::impls::{impl Clone for i64}::clone
+pub fn {impl Clone for i64}::clone<'_0>(self_1: &'_0 i64) -> i64
+{
+    let _0: i64; // return
+    let self_1: &'1 i64; // arg #1
+
+    _0 = copy (*self_1)
+    return
+}
+
+// Full name: core::clone::impls::{impl Clone for i64}::clone_from
+pub fn {impl Clone for i64}::clone_from<'_0, '_1>(self_1: &'_0 mut i64, source_2: &'_1 i64)
+where
+    [@TraitClause0]: Destruct<i64>,
+{
+    let _0: (); // return
+    let self_1: &'1 mut i64; // arg #1
+    let source_2: &'3 i64; // arg #2
+    let _3: i64; // anonymous local
+
+    _0 = ()
+    storage_live(_3)
+    _3 = {impl Clone for i64}::clone<'5>(move source_2)
+    drop[@TraitClause0::drop_in_place] (*self_1)
+    (*self_1) = move _3
+    storage_dead(_3)
+    return
+}
+
+// Full name: core::clone::impls::{impl Clone for i64}
+impl Clone for i64 {
+    parent_clause0 = {built_in impl Sized for i64}
+    fn clone<'_0_1> = {impl Clone for i64}::clone<'_0_1>
+    fn clone_from<'_0_1, '_1_1, [@TraitClause0_1]: Destruct<i64>> = {impl Clone for i64}::clone_from<'_0_1, '_1_1>[@TraitClause0_1]
+    non-dyn-compatible
+}
+
+// Full name: core::clone::impls::{impl Clone for char}::clone
+pub fn {impl Clone for char}::clone<'_0>(self_1: &'_0 char) -> char
+{
+    let _0: char; // return
+    let self_1: &'1 char; // arg #1
+
+    _0 = copy (*self_1)
+    return
+}
+
+// Full name: core::clone::impls::{impl Clone for char}::clone_from
+pub fn {impl Clone for char}::clone_from<'_0, '_1>(self_1: &'_0 mut char, source_2: &'_1 char)
+where
+    [@TraitClause0]: Destruct<char>,
+{
+    let _0: (); // return
+    let self_1: &'1 mut char; // arg #1
+    let source_2: &'3 char; // arg #2
+    let _3: char; // anonymous local
+
+    _0 = ()
+    storage_live(_3)
+    _3 = {impl Clone for char}::clone<'5>(move source_2)
+    drop[@TraitClause0::drop_in_place] (*self_1)
+    (*self_1) = move _3
+    storage_dead(_3)
+    return
+}
+
+// Full name: core::clone::impls::{impl Clone for char}
+impl Clone for char {
+    parent_clause0 = {built_in impl Sized for char}
+    fn clone<'_0_1> = {impl Clone for char}::clone<'_0_1>
+    fn clone_from<'_0_1, '_1_1, [@TraitClause0_1]: Destruct<char>> = {impl Clone for char}::clone_from<'_0_1, '_1_1>[@TraitClause0_1]
+    non-dyn-compatible
+}
+
+// Full name: core::intrinsics::transmute
+#[lang_item("transmute")]
+pub unsafe fn transmute<Src, Dst>(src_1: Src) -> Dst
+where
+    [@TraitClause0]: Sized<Src>,
+    [@TraitClause1]: Sized<Dst>,
+= <intrinsic:transmute>
+
+// Full name: core::marker::Copy
+#[lang_item("copy")]
+pub trait Copy<Self>
+{
+    parent_clause0 : [@TraitClause0]: MetaSized<Self>
+    parent_clause1 : [@TraitClause1]: Clone<Self>
+    non-dyn-compatible
+}
+
+// Full name: core::marker::{impl Copy for i64}
+impl Copy for i64 {
+    parent_clause0 = {built_in impl MetaSized for i64}
+    parent_clause1 = {impl Clone for i64}
+    non-dyn-compatible
+}
+
+// Full name: core::marker::{impl Copy for char}
+impl Copy for char {
+    parent_clause0 = {built_in impl MetaSized for char}
+    parent_clause1 = {impl Clone for char}
+    non-dyn-compatible
+}
+
+// Full name: core::num::niche_types::NonZeroI64Inner
+pub struct NonZeroI64Inner {
+  (i64 is (-9223372036854775808 : i64)..=(-1 : i64) | (1 : i64)..=(9223372036854775807 : i64)),
+}
+
+// Full name: core::num::niche_types::{impl Clone for NonZeroI64Inner}::clone
+pub fn {impl Clone for NonZeroI64Inner}::clone<'_0>(self_1: &'_0 NonZeroI64Inner) -> NonZeroI64Inner
+{
+    let _0: NonZeroI64Inner; // return
+    let self_1: &'1 NonZeroI64Inner; // arg #1
+
+    _0 = copy (*self_1)
+    return
+}
+
+// Full name: core::num::niche_types::{impl Clone for NonZeroI64Inner}::clone_from
+pub fn {impl Clone for NonZeroI64Inner}::clone_from<'_0, '_1>(self_1: &'_0 mut NonZeroI64Inner, source_2: &'_1 NonZeroI64Inner)
+where
+    [@TraitClause0]: Destruct<NonZeroI64Inner>,
+{
+    let _0: (); // return
+    let self_1: &'1 mut NonZeroI64Inner; // arg #1
+    let source_2: &'3 NonZeroI64Inner; // arg #2
+    let _3: NonZeroI64Inner; // anonymous local
+
+    _0 = ()
+    storage_live(_3)
+    _3 = {impl Clone for NonZeroI64Inner}::clone<'5>(move source_2)
+    drop[@TraitClause0::drop_in_place] (*self_1)
+    (*self_1) = move _3
+    storage_dead(_3)
+    return
+}
+
+// Full name: core::num::niche_types::{impl Clone for NonZeroI64Inner}
+impl Clone for NonZeroI64Inner {
+    parent_clause0 = {built_in impl Sized for NonZeroI64Inner}
+    fn clone<'_0_1> = {impl Clone for NonZeroI64Inner}::clone<'_0_1>
+    fn clone_from<'_0_1, '_1_1, [@TraitClause0_1]: Destruct<NonZeroI64Inner>> = {impl Clone for NonZeroI64Inner}::clone_from<'_0_1, '_1_1>[@TraitClause0_1]
+    non-dyn-compatible
+}
+
+// Full name: core::num::niche_types::NonZeroCharInner
+pub struct NonZeroCharInner {
+  (char is ()..=(􏿿)),
+}
+
+// Full name: core::num::niche_types::{impl Clone for NonZeroCharInner}::clone
+pub fn {impl Clone for NonZeroCharInner}::clone<'_0>(self_1: &'_0 NonZeroCharInner) -> NonZeroCharInner
+{
+    let _0: NonZeroCharInner; // return
+    let self_1: &'1 NonZeroCharInner; // arg #1
+
+    _0 = copy (*self_1)
+    return
+}
+
+// Full name: core::num::niche_types::{impl Clone for NonZeroCharInner}::clone_from
+pub fn {impl Clone for NonZeroCharInner}::clone_from<'_0, '_1>(self_1: &'_0 mut NonZeroCharInner, source_2: &'_1 NonZeroCharInner)
+where
+    [@TraitClause0]: Destruct<NonZeroCharInner>,
+{
+    let _0: (); // return
+    let self_1: &'1 mut NonZeroCharInner; // arg #1
+    let source_2: &'3 NonZeroCharInner; // arg #2
+    let _3: NonZeroCharInner; // anonymous local
+
+    _0 = ()
+    storage_live(_3)
+    _3 = {impl Clone for NonZeroCharInner}::clone<'5>(move source_2)
+    drop[@TraitClause0::drop_in_place] (*self_1)
+    (*self_1) = move _3
+    storage_dead(_3)
+    return
+}
+
+// Full name: core::num::niche_types::{impl Clone for NonZeroCharInner}
+impl Clone for NonZeroCharInner {
+    parent_clause0 = {built_in impl Sized for NonZeroCharInner}
+    fn clone<'_0_1> = {impl Clone for NonZeroCharInner}::clone<'_0_1>
+    fn clone_from<'_0_1, '_1_1, [@TraitClause0_1]: Destruct<NonZeroCharInner>> = {impl Clone for NonZeroCharInner}::clone_from<'_0_1, '_1_1>[@TraitClause0_1]
+    non-dyn-compatible
+}
+
+// Full name: core::num::niche_types::{impl Copy for NonZeroI64Inner}
+impl Copy for NonZeroI64Inner {
+    parent_clause0 = {built_in impl MetaSized for NonZeroI64Inner}
+    parent_clause1 = {impl Clone for NonZeroI64Inner}
+    non-dyn-compatible
+}
+
+// Full name: core::num::niche_types::{impl Copy for NonZeroCharInner}
+impl Copy for NonZeroCharInner {
+    parent_clause0 = {built_in impl MetaSized for NonZeroCharInner}
+    parent_clause1 = {impl Clone for NonZeroCharInner}
+    non-dyn-compatible
+}
+
+// Full name: core::num::nonzero::private::Sealed
+pub trait Sealed<Self>
+{
+    parent_clause0 : [@TraitClause0]: MetaSized<Self>
+    vtable: core::num::nonzero::private::Sealed::{vtable}
+}
+
+// Full name: core::num::nonzero::ZeroablePrimitive
+pub trait ZeroablePrimitive<Self>
+{
+    parent_clause0 : [@TraitClause0]: Sized<Self>
+    parent_clause1 : [@TraitClause1]: Copy<Self>
+    parent_clause2 : [@TraitClause2]: Sealed<Self>
+    parent_clause3 : [@TraitClause3]: Sized<Self::NonZeroInner>
+    parent_clause4 : [@TraitClause4]: Copy<Self::NonZeroInner>
+    type NonZeroInner
+    non-dyn-compatible
+}
+
+// Full name: core::num::nonzero::{impl Sealed for i64}
+impl Sealed for i64 {
+    parent_clause0 = {built_in impl MetaSized for i64}
+    vtable: {impl Sealed for i64}::{vtable}
+}
+
+// Full name: core::num::nonzero::{impl Sealed for char}
+impl Sealed for char {
+    parent_clause0 = {built_in impl MetaSized for char}
+    vtable: {impl Sealed for char}::{vtable}
+}
+
+// Full name: core::num::nonzero::{impl ZeroablePrimitive for i64}
+impl ZeroablePrimitive for i64 {
+    parent_clause0 = {built_in impl Sized for i64}
+    parent_clause1 = {impl Copy for i64}
+    parent_clause2 = {impl Sealed for i64}
+    parent_clause3 = {built_in impl Sized for NonZeroI64Inner}
+    parent_clause4 = {impl Copy for NonZeroI64Inner}
+    type NonZeroInner = NonZeroI64Inner
+    non-dyn-compatible
+}
+
+// Full name: core::num::nonzero::{impl ZeroablePrimitive for char}
+impl ZeroablePrimitive for char {
+    parent_clause0 = {built_in impl Sized for char}
+    parent_clause1 = {impl Copy for char}
+    parent_clause2 = {impl Sealed for char}
+    parent_clause3 = {built_in impl Sized for NonZeroCharInner}
+    parent_clause4 = {impl Copy for NonZeroCharInner}
+    type NonZeroInner = NonZeroCharInner
+    non-dyn-compatible
+}
+
+// Full name: core::num::nonzero::NonZero
+#[lang_item("NonZero")]
+pub struct NonZero<T>
+where
+    [@TraitClause0]: Sized<T>,
+    [@TraitClause1]: ZeroablePrimitive<T>,
+{
+  @TraitClause1::NonZeroInner,
+}
+
+// Full name: core::num::nonzero::{NonZero<T>[@TraitClause0, @TraitClause1]}::get
+pub fn get<T>(self_1: NonZero<T>[@TraitClause0, @TraitClause1]) -> T
+where
+    [@TraitClause0]: Sized<T>,
+    [@TraitClause1]: ZeroablePrimitive<T>,
+{
+    let _0: T; // return
+    let self_1: NonZero<T>[@TraitClause0, @TraitClause1]; // arg #1
+
+    _0 = transmute<NonZero<T>[@TraitClause0, @TraitClause1], T>(copy self_1)
+    return
+}
+
+// Full name: core::ptr::non_null::NonNull
+#[lang_item("NonNull")]
+pub struct NonNull<T> {
+  pointer: *const T,
+}
+
+// Full name: core::ptr::non_null::{NonNull<T>}::as_ptr
+pub fn as_ptr<T>(self_1: NonNull<T>) -> *mut T
+{
+    let _0: *mut T; // return
+    let self_1: NonNull<T>; // arg #1
+
+    _0 = transmute<NonNull<T>, *mut T>(copy self_1)
+    return
+}
+
+// Full name: test_crate::NonZeroU32Custom
+pub type NonZeroU32Custom = (u32 is (1 : u32)..=(4294967295 : u32))
+
+// Full name: test_crate::use_custom
+pub fn use_custom(x_1: (u32 is (1 : u32)..=(4294967295 : u32))) -> u32
+{
+    let _0: u32; // return
+    let x_1: (u32 is (1 : u32)..=(4294967295 : u32)); // arg #1
+    let _2: (u32 is (1 : u32)..=(4294967295 : u32)); // anonymous local
+
+    storage_live(_2)
+    _2 = copy x_1
+    _0 = transmute<(u32 is (1 : u32)..=(4294967295 : u32)), u32>[{built_in impl Sized for (u32 is (1 : u32)..=(4294967295 : u32))}, {built_in impl Sized for u32}](move _2)
+    storage_dead(_2)
+    return
+}
+
+// Full name: test_crate::use_nonnull
+pub fn use_nonnull(x_1: NonNull<u8>) -> *mut u8
+{
+    let _0: *mut u8; // return
+    let x_1: NonNull<u8>; // arg #1
+    let _2: NonNull<u8>; // anonymous local
+
+    storage_live(_2)
+    _2 = copy x_1
+    _0 = as_ptr<u8>(move _2)
+    storage_dead(_2)
+    return
+}
+
+// Full name: test_crate::use_nonzero_i64
+pub fn use_nonzero_i64(x_1: NonZero<i64>[{built_in impl Sized for i64}, {impl ZeroablePrimitive for i64}]) -> i64
+{
+    let _0: i64; // return
+    let x_1: NonZero<i64>[{built_in impl Sized for i64}, {impl ZeroablePrimitive for i64}]; // arg #1
+    let _2: NonZero<i64>[{built_in impl Sized for i64}, {impl ZeroablePrimitive for i64}]; // anonymous local
+
+    storage_live(_2)
+    _2 = copy x_1
+    _0 = get<i64>[{built_in impl Sized for i64}, {impl ZeroablePrimitive for i64}](move _2)
+    storage_dead(_2)
+    return
+}
+
+// Full name: test_crate::use_nonzero_char
+pub fn use_nonzero_char(x_1: NonZero<char>[{built_in impl Sized for char}, {impl ZeroablePrimitive for char}]) -> char
+{
+    let _0: char; // return
+    let x_1: NonZero<char>[{built_in impl Sized for char}, {impl ZeroablePrimitive for char}]; // arg #1
+    let _2: NonZero<char>[{built_in impl Sized for char}, {impl ZeroablePrimitive for char}]; // anonymous local
+
+    storage_live(_2)
+    _2 = copy x_1
+    _0 = get<char>[{built_in impl Sized for char}, {impl ZeroablePrimitive for char}](move _2)
+    storage_dead(_2)
+    return
+}
+
+
+

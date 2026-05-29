@@ -364,6 +364,7 @@ impl<'a> PartialMonomorphizer<'a> {
                 );
                 false
             }
+            TyKind::Pat(ty, _) => self.is_infected(ty),
             TyKind::TypeVar(..)
             | TyKind::Literal(..)
             | TyKind::Never

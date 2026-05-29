@@ -33,6 +33,7 @@ pub fn make_ocaml_ident(name: &str) -> String {
             | "let"
             | "method"
             | "open"
+            | "or"
             | "rec"
             | "struct"
             | "to"

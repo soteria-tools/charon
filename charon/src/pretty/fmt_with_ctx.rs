@@ -2240,7 +2240,32 @@ impl<C: AstFormatter> FmtWithCtx<C> for Ty {
             TyKind::PtrMetadata(ty) => {
                 write!(f, "PtrMetadata<{}>", ty.with_ctx(ctx))
             }
+            TyKind::Pat(ty, pat) => {
+                write!(f, "({} is {})", ty.with_ctx(ctx), pat.with_ctx(ctx))
+            }
             TyKind::Error(msg) => write!(f, "type_error(\"{msg}\")"),
+        }
+    }
+}
+
+impl<C: AstFormatter> FmtWithCtx<C> for PatternKind {
+    fn fmt_with_ctx(&self, ctx: &C, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        match self {
+            PatternKind::Range { start, end } => {
+                write!(f, "({})..=({})", start.with_ctx(ctx), end.with_ctx(ctx))
+            }
+            PatternKind::Or(pats) => {
+                let mut first = true;
+                for pat in pats {
+                    if !first {
+                        write!(f, " | ")?;
+                    }
+                    first = false;
+                    write!(f, "{}", pat.with_ctx(ctx))?;
+                }
+                Ok(())
+            }
+            PatternKind::NotNull => write!(f, "!null"),
         }
     }
 }

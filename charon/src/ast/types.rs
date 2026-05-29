@@ -900,9 +900,26 @@ pub enum TyKind {
     Array(Ty, Box<ConstantExpr>),
     /// A slice type `[T]`
     Slice(Ty),
+    /// A pattern type. See https://github.com/rust-lang/rust/issues/123646.
+    Pat(Ty, Box<PatternKind>),
     /// A type that could not be computed or was incorrect.
     #[drive(skip)]
     Error(String),
+}
+
+/// A pattern on a type. See https://github.com/rust-lang/rust/issues/123646.
+#[derive(Debug, Clone, PartialEq, Eq, Hash, SerializeState, DeserializeState, Drive, DriveMut)]
+#[serde_state(state_implements = HashConsSerializerState)]
+pub enum PatternKind {
+    /// A range pattern `base_ty is start..=end`. The range is always inclusive.
+    Range {
+        start: ConstantExpr,
+        end: ConstantExpr,
+    },
+    /// An OR of multiple patterns.
+    Or(Vec<PatternKind>),
+    /// A non-null pointer pattern (for pointer types like `NonNull`).
+    NotNull,
 }
 
 /// Builtin types identifiers.

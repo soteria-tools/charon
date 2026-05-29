@@ -110,6 +110,9 @@ impl TypeCheckVisitor<'_> {
             (TyKind::DynTrait(..), TyKind::DynTrait(..)) => {}
             (TyKind::FnPtr(..), TyKind::FnPtr(..)) => {}
             (TyKind::FnDef(..), TyKind::FnDef(..)) => {}
+            (TyKind::Pat(aty, _), TyKind::Pat(bty, _)) => {
+                self.match_tys(aty, bty)?;
+            }
             // We can't decide type equality, so we avoid false positives here.
             (TyKind::TypeVar(_), _) | (_, TyKind::TypeVar(_)) => {}
             (TyKind::TraitType(..), _) | (_, TyKind::TraitType(..)) => {}

@@ -190,6 +190,7 @@ impl Pattern {
             | TyKind::FnPtr(..)
             | TyKind::FnDef(..)
             | TyKind::PtrMetadata(..)
+            | TyKind::Pat(..)
             | TyKind::Error(..) => false,
         }
     }

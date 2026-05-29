@@ -887,6 +887,21 @@ and path_elem_of_postcard (ctx : of_postcard_ctx) (st : postcard_state) :
          Ok (PeTarget x_0)
      | _ -> Error ("unknown enum variant tag: " ^ string_of_int __tag))
 
+and pattern_kind_of_postcard (ctx : of_postcard_ctx) (st : postcard_state) :
+    (pattern_kind, string) result =
+  combine_error_msgs st __FUNCTION__
+    (let* __tag = int_of_postcard ctx st in
+     match __tag with
+     | 0 ->
+         let* start = constant_expr_of_postcard ctx st in
+         let* end_ = constant_expr_of_postcard ctx st in
+         Ok (Range (start, end_))
+     | 1 ->
+         let* x_0 = list_of_postcard pattern_kind_of_postcard ctx st in
+         Ok (Or x_0)
+     | 2 -> Ok NotNull
+     | _ -> Error ("unknown enum variant tag: " ^ string_of_int __tag))
+
 and place_of_postcard (ctx : of_postcard_ctx) (st : postcard_state) :
     (place, string) result =
   combine_error_msgs st __FUNCTION__
@@ -1271,6 +1286,10 @@ and ty_kind_of_postcard (ctx : of_postcard_ctx) (st : postcard_state) :
          let* x_0 = ty_of_postcard ctx st in
          Ok (TSlice x_0)
      | 13 ->
+         let* x_0 = ty_of_postcard ctx st in
+         let* x_1 = box_of_postcard pattern_kind_of_postcard ctx st in
+         Ok (TPat (x_0, x_1))
+     | 14 ->
          let* x_0 = string_of_postcard ctx st in
          Ok (TError x_0)
      | _ -> Error ("unknown enum variant tag: " ^ string_of_int __tag))

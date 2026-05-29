@@ -813,8 +813,42 @@ pub enum TyKind {
     Infer(InferTy),
     #[custom_arm(FROM_TYPE::Error(..) => TO_TYPE::Error,)]
     Error,
+    #[custom_arm(
+        ty::TyKind::Pat(base_ty, pat) => {
+            TyKind::Pat(Box::new(base_ty.sinto(s)), pat.sinto(s))
+        },
+    )]
+    /// Reflects [`ty::TyKind::Pat`]
+    Pat(Box<Ty>, PatternKind),
     #[todo]
     Todo(String),
+}
+
+/// Reflects [`ty::PatternKind`]
+#[derive(Clone, Debug, Hash, PartialEq, Eq)]
+pub enum PatternKind {
+    /// A range pattern `base_ty is start..=end`. The range is always inclusive.
+    Range {
+        start: ConstantExpr,
+        end: ConstantExpr,
+    },
+    /// An OR of multiple patterns.
+    Or(Vec<PatternKind>),
+    /// A non-null pointer pattern.
+    NotNull,
+}
+
+impl<'tcx, S: UnderOwnerState<'tcx>> SInto<S, PatternKind> for ty::Pattern<'tcx> {
+    fn sinto(&self, s: &S) -> PatternKind {
+        match &**self {
+            ty::PatternKind::Range { start, end } => PatternKind::Range {
+                start: start.sinto(s),
+                end: end.sinto(s),
+            },
+            ty::PatternKind::Or(pats) => PatternKind::Or(pats.iter().map(|p| p.sinto(s)).collect()),
+            ty::PatternKind::NotNull => PatternKind::NotNull,
+        }
+    }
 }
 
 /// A representation of `exists<T: Trait1 + Trait2>(value)`: we create a fresh type id and the

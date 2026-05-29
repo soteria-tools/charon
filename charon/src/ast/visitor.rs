@@ -44,7 +44,7 @@ use derive_generic_visitor::*;
     // Types that we unconditionally explore.
     drive(
         Assert, BinOp, BorrowKind, BuiltinAssertKind, BuiltinFunId, BuiltinIndexOp, BuiltinTy,
-        Call, CastKind, ClosureInfo, ClosureKind, ConstGenericParam, ConstGenericVarId,
+        Call, CastKind, ClosureInfo, ClosureKind, ConstGenericParam, ConstGenericVarId, PatternKind,
         Disambiguator, DynPredicate, Field, FieldId, FieldProjKind, File, FloatTy, FloatValue,
         FnOperand, FunId, FnPtrKind, FunSig, IntegerTy, IntTy, UIntTy, Literal, LiteralTy,
         llbc_ast::ExprBody, llbc_ast::StatementKind, llbc_ast::Switch,

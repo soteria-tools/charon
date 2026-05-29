@@ -619,7 +619,18 @@ and pp_ty (env : fmt_env) (fmt : Format.formatter) (ty : ty) : unit =
       Format.fprintf fmt "[%a; %a]" (pp_ty env) ty (pp_constant_expr env) len
   | TSlice ty -> Format.fprintf fmt "[%a]" (pp_ty env) ty
   | TPtrMetadata ty -> Format.fprintf fmt "PtrMetadata<%a>" (pp_ty env) ty
+  | TPat (ty, pat) ->
+      Format.fprintf fmt "(%a is %a)" (pp_ty env) ty (pp_pattern_kind env) pat
   | TError msg -> Format.fprintf fmt "type_error(\"%s\")" msg
+
+and pp_pattern_kind (env : fmt_env) (fmt : Format.formatter)
+    (pat : pattern_kind) : unit =
+  match pat with
+  | Range (start, end_) ->
+      Format.fprintf fmt "(%a)..=(%a)" (pp_constant_expr env) start
+        (pp_constant_expr env) end_
+  | Or pats -> pp_sep_list " | " (pp_pattern_kind env) fmt pats
+  | NotNull -> pp_string fmt "!null"
 
 and ty_to_string env ty = pp_to_string (fun fmt -> pp_ty env fmt ty)
 

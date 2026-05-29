@@ -810,6 +810,7 @@ impl Ty {
             | TyKind::FnPtr(..)
             | TyKind::FnDef(..)
             | TyKind::Array(..)
+            | TyKind::Pat(..)
             | TyKind::Error(_) => PtrMetadata::None,
             // The metadata itself must be Sized, hence must with `PtrMetadata::None`
             TyKind::PtrMetadata(_) => PtrMetadata::None,

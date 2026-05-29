@@ -961,6 +961,20 @@ and path_elem_of_json (ctx : of_json_ctx) (js : json) :
         Ok (PeTarget target)
     | _ -> Error "")
 
+and pattern_kind_of_json (ctx : of_json_ctx) (js : json) :
+    (pattern_kind, string) result =
+  combine_error_msgs js __FUNCTION__
+    (match js with
+    | `Assoc [ ("Range", `Assoc [ ("start", start); ("end", end_) ]) ] ->
+        let* start = constant_expr_of_json ctx start in
+        let* end_ = constant_expr_of_json ctx end_ in
+        Ok (Range (start, end_))
+    | `Assoc [ ("Or", or_) ] ->
+        let* or_ = list_of_json pattern_kind_of_json ctx or_ in
+        Ok (Or or_)
+    | `String "NotNull" -> Ok NotNull
+    | _ -> Error "")
+
 and place_of_json (ctx : of_json_ctx) (js : json) : (place, string) result =
   combine_error_msgs js __FUNCTION__
     (match js with
@@ -1413,6 +1427,10 @@ and ty_kind_of_json (ctx : of_json_ctx) (js : json) : (ty_kind, string) result =
     | `Assoc [ ("Slice", slice) ] ->
         let* slice = ty_of_json ctx slice in
         Ok (TSlice slice)
+    | `Assoc [ ("Pat", `List [ x_0; x_1 ]) ] ->
+        let* x_0 = ty_of_json ctx x_0 in
+        let* x_1 = box_of_json pattern_kind_of_json ctx x_1 in
+        Ok (TPat (x_0, x_1))
     | `Assoc [ ("Error", error) ] ->
         let* error = string_of_json ctx error in
         Ok (TError error)

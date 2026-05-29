@@ -284,6 +284,12 @@ impl<'tcx, 'ctx> ItemTransCtx<'tcx, 'ctx> {
                 TyKind::DynTrait(DynPredicate { binder })
             }
 
+            hax::TyKind::Pat(base_ty, pattern) => {
+                let ty = self.translate_ty(span, base_ty)?;
+                let kind = self.translate_pattern_kind(span, pattern)?;
+                TyKind::Pat(ty, Box::new(kind))
+            }
+
             hax::TyKind::Infer(_) => {
                 raise_error!(self, span, "Unsupported type: infer type")
             }
@@ -305,6 +311,27 @@ impl<'tcx, 'ctx> ItemTransCtx<'tcx, 'ctx> {
             }
         };
         Ok(kind.into_ty())
+    }
+
+    fn translate_pattern_kind(
+        &mut self,
+        span: Span,
+        pattern: &hax::PatternKind,
+    ) -> Result<PatternKind, Error> {
+        Ok(match pattern {
+            hax::PatternKind::Range { start, end } => PatternKind::Range {
+                start: self.translate_constant_expr(span, start)?,
+                end: self.translate_constant_expr(span, end)?,
+            },
+            hax::PatternKind::Or(pats) => {
+                let pats = pats
+                    .iter()
+                    .map(|p| self.translate_pattern_kind(span, p))
+                    .collect::<Result<_, _>>()?;
+                PatternKind::Or(pats)
+            }
+            hax::PatternKind::NotNull => PatternKind::NotNull,
+        })
     }
 
     pub(crate) fn translate_rustc_ty(

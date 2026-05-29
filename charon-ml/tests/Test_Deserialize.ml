@@ -105,11 +105,17 @@ let assert_pretty_matches_rust (file : string) (printed : string) : unit =
     |> normalize_trailing_newlines
   in
   let ocaml = normalize_trailing_newlines printed in
-  if expected <> ocaml then
+  if expected <> ocaml then (
     let diff = unified_diff ~expected ~ocaml in
+    log#lerror
+      (lazy
+        (Format.asprintf
+           "OCaml pretty-printer output differs from %s pretty-print for %s:\n\
+            %s"
+           charon_bin file diff));
     Format.kasprintf failwith
-      "OCaml pretty-printer output differs from %s pretty-print for %s:\n%s"
-      charon_bin file diff
+      "OCaml pretty-printer output differs from %s pretty-print for %s"
+      charon_bin file)
 
 let test_cross_format_errors json postcard =
   (match OfPostcard.crate_of_postcard_file json with

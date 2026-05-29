@@ -522,6 +522,19 @@ and lifetime_mutability =
 (** .0 outlives .1 *)
 and ('a0, 'a1) outlives_pred = 'a0 * 'a1
 
+(** A pattern on a type. See https://github.com/rust-lang/rust/issues/123646. *)
+and pattern_kind =
+  | Range of constant_expr * constant_expr
+      (** A range pattern [base_ty is start..=end]. The range is always
+          inclusive.
+
+          Fields:
+          - [start]
+          - [end] *)
+  | Or of pattern_kind list  (** An OR of multiple patterns. *)
+  | NotNull
+      (** A non-null pointer pattern (for pointer types like [NonNull]). *)
+
 (** Where a given predicate came from. *)
 and predicate_origin =
   | WhereClauseOnFn
@@ -786,6 +799,9 @@ and ty_kind =
           is assumed to be a type variable *)
   | TArray of ty * constant_expr  (** An array type [[T; N]] *)
   | TSlice of ty  (** A slice type [[T]] *)
+  | TPat of ty * pattern_kind
+      (** A pattern type. See https://github.com/rust-lang/rust/issues/123646.
+      *)
   | TError of string  (** A type that could not be computed or was incorrect. *)
 
 (** Reference to a type declaration or builtin type. *)
