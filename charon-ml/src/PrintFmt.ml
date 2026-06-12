@@ -555,6 +555,7 @@ and pp_builtin_fun_id (fmt : Format.formatter) (aid : builtin_fun_id) : unit =
       let op = if is_range then "SubSlice" else "Index" in
       Format.fprintf fmt "%s%s%a" ty op pp_ref_kind mutability
   | PtrFromParts mut -> Format.fprintf fmt "PtrFromParts%a" pp_ref_kind mut
+  | ZeroIfNull -> pp_string fmt "ZeroIfNull"
 
 and pp_fun_id (env : fmt_env) (fmt : Format.formatter) (fid : fun_id) : unit =
   match fid with

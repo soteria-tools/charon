@@ -38,6 +38,7 @@ pub mod resugar {
     pub mod reconstruct_fallible_operations;
     pub mod reconstruct_intrinsics;
     pub mod reconstruct_matches;
+    pub mod reconstruct_ptr_null_checks;
     pub mod reconstruct_vec_boxes;
 }
 
@@ -174,6 +175,9 @@ pub fn run_transformation_passes(options: &CliOpts, ctx: &mut TransformCtx) {
         CowBox::Borrowed(&simplify_output::remove_unused_locals::Transform),
         // Another round.
         CowBox::Borrowed(&control_flow::merge_goto_chains::Transform),
+        // # Micro pass: when a pointer is transmuted only to check if it is null, replace it with a
+        // call to the `ZeroIfNull` builtin.
+        CowBox::Borrowed(&resugar::reconstruct_ptr_null_checks::Transform),
         // Filter the "dangling" blocks. Those might have been introduced by, for instance,
         // [`merge_goto_chains`].
         CowBox::Borrowed(&normalize::filter_unreachable_blocks::Transform),

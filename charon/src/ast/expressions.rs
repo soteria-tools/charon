@@ -454,6 +454,11 @@ pub enum BuiltinFunId {
     ///
     /// This is used instead of `AggregateKind::RawPtr` when `--ops-to-function-calls` is set.
     PtrFromParts(RefKind),
+    /// `ZeroIfNull(p)` returns an integer that is `0` if and only if the (thin) pointer `p`
+    /// is null. This avoids a pointer-to-integer cast that can be expensive to reason about in some tools.
+    ///
+    /// This is introduced by the `reconstruct_ptr_null_checks` micro-pass.
+    ZeroIfNull,
 }
 
 /// One of 8 built-in indexing operations.

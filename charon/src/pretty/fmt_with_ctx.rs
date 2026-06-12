@@ -323,6 +323,7 @@ impl Display for BuiltinFunId {
                 let mutability = mutability.variant_name();
                 &format!("PtrFromParts{mutability}")
             }
+            BuiltinFunId::ZeroIfNull => "ZeroIfNull",
         };
         f.write_str(name)
     }

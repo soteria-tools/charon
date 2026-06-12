@@ -263,6 +263,12 @@ and builtin_fun_id =
 
           This is used instead of [AggregateKind::RawPtr] when
           [--ops-to-function-calls] is set. *)
+  | ZeroIfNull
+      (** [ZeroIfNull(p)] returns a [usize]/[isize] that is [0] if and only if
+          the (thin) pointer [p] is null. This avoids a pointer-to-integer cast
+          that can be expensive to reason about in some tools..
+
+          This is introduced by the [reconstruct_ptr_null_checks] micro-pass. *)
 
 (** Describes a built-in impl. Mostly lists the implemented trait, sometimes
     with more details about the contents of the implementation. *)
