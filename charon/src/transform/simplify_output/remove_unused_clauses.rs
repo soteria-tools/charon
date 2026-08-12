@@ -8,6 +8,7 @@ use std::collections::{HashMap, HashSet};
 use crate::ast::*;
 use crate::ids::IndexVec;
 
+use crate::transform::utils::RemoveClausesVisitor;
 use crate::transform::{TransformCtx, ctx::TransformPass};
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq, PartialOrd, Ord, Hash)]
@@ -90,49 +91,6 @@ impl VisitAst for BuildGraphVisitor<'_> {
                 (),
             );
         }
-    }
-}
-
-#[derive(Visitor)]
-struct RemoveClausesVisitor<'a> {
-    /// For each item, a map from old clause ids to new ones. The new ones are in the same order,
-    /// just skipping some removed old ones.
-    remaps: &'a HashMap<ItemId, IndexVec<TraitClauseId, Option<TraitClauseId>>>,
-    current_item: ItemId,
-    binder_depth: DeBruijnId,
-}
-
-impl VisitorWithBinderDepth for RemoveClausesVisitor<'_> {
-    fn binder_depth_mut(&mut self) -> &mut DeBruijnId {
-        &mut self.binder_depth
-    }
-}
-
-impl VisitorWithItemRefMut for RemoveClausesVisitor<'_> {
-    fn enter_item_ref(&mut self, item_id: ItemId, args: &mut GenericArgs) {
-        if let Some(remap) = self.remaps.get(&item_id) {
-            for (old_id, trait_ref) in std::mem::take(&mut args.trait_refs).into_iter_enumerated() {
-                if remap[old_id].is_some() {
-                    args.trait_refs.push(trait_ref);
-                }
-            }
-        }
-    }
-}
-
-impl VisitAstMut for RemoveClausesVisitor<'_> {
-    fn visit<T: AstVisitable>(&mut self, x: &mut T) -> ControlFlow<Self::Break> {
-        VisitWithBinderDepth::new(VisitWithItemRef::new(self)).visit(x)
-    }
-
-    fn visit_trait_ref_kind(&mut self, x: &mut TraitRefKind) -> ControlFlow<Self::Break> {
-        if let TraitRefKind::Clause(var) = x
-            && let Some(clause_id) = var.bound_at_depth_mut(self.binder_depth)
-            && let Some(remap) = self.remaps.get(&self.current_item)
-        {
-            *clause_id = remap[*clause_id].expect("mismatch while trying to remove unused clauses");
-        }
-        self.visit_inner(x)
     }
 }
 
