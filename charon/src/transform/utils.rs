@@ -114,6 +114,20 @@ pub fn remove_clauses(
             binder_depth: DeBruijnId::ZERO,
         });
     }
+
+    // updated translated names
+    let names = translated
+        .item_names
+        .iter_mut()
+        .chain(translated.short_names.iter_mut());
+    for (&item_id, name) in names {
+        let _ = RemoveClausesVisitor {
+            remaps: &remaps,
+            current_item: item_id,
+            binder_depth: DeBruijnId::ZERO,
+        }
+        .visit(name);
+    }
 }
 
 #[derive(Visitor)]

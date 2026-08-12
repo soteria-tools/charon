@@ -1619,7 +1619,7 @@ pub fn clear<'_0>(v: &'_0 mut Vec<u32>[{built_in impl Sized for u32}])
         storage_live(_5)
         storage_live(_6)
         _6 = &(*v)
-        _5 = alloc::vec::{Vec<T>[TraitClause0, TraitClause1]}::len<'8, u32, Global>[{built_in impl Sized for u32}, {built_in impl Sized for Global}](move _6)
+        _5 = alloc::vec::{Vec<T>[TraitClause0]}::len<'8, u32, Global>[{built_in impl Sized for u32}, {built_in impl Sized for Global}](move _6)
         ↳⚡ storage_dead(_10)
             storage_dead(v)
             unwind_continue
