@@ -65,9 +65,7 @@ impl Place {
         use TyKind::*;
         let proj_ty = match self.ty.kind() {
             Ref(_, ty, _) | RawPtr(ty, _) => ty.clone(),
-            Adt(tref) if matches!(tref.id, TypeId::Builtin(BuiltinTy::Box)) => {
-                tref.generics.types[0].clone()
-            }
+            Adt(tref, Some(BuiltinTy::Box)) => tref.generics.types[0].clone(),
             Adt(..) | TypeVar(_) | Literal(_) | Never | TraitType(..) | DynTrait(..)
             | FnPtr(..) | FnDef(..) | PtrMetadata(..) | Array(..) | Slice(_) | Pattern(..)
             | Error(..) => {
@@ -124,7 +122,7 @@ impl Rvalue {
         Rvalue::Aggregate(
             AggregateKind::Adt(
                 TypeDeclRef {
-                    id: TypeId::Tuple,
+                    id: TypeDeclId::UNIT,
                     generics: Box::new(GenericArgs::empty()),
                 },
                 None,
@@ -168,9 +166,7 @@ impl ProjectionElem {
                 use TyKind::*;
                 match ty.kind() {
                     Ref(_, ty, _) | RawPtr(ty, _) => ty.clone(),
-                    Adt(tref) if matches!(tref.id, TypeId::Builtin(BuiltinTy::Box)) => {
-                        tref.generics.types[0].clone()
-                    }
+                    Adt(tref, Some(BuiltinTy::Box)) => tref.generics.types[0].clone(),
                     Adt(..) | TypeVar(_) | Literal(_) | Never | TraitType(..) | DynTrait(..)
                     | Array(..) | Slice(..) | FnPtr(..) | FnDef(..) | PtrMetadata(..)
                     | Pattern(..) | Error(..) => {
@@ -179,40 +175,30 @@ impl ProjectionElem {
                     }
                 }
             }
-            Field(pkind, field_id) => {
-                // Lookup the type decl
-                use FieldProjKind::*;
-                match pkind {
-                    Adt(type_decl_id, variant_id) => {
-                        // Can fail if the type declaration was not translated.
-                        let type_decl = krate.type_decls.get(*type_decl_id)?;
-                        let tref = ty.as_adt()?;
-                        assert!(TypeId::Adt(*type_decl_id) == tref.id);
-                        use TypeDeclKind::*;
-                        match &type_decl.kind {
-                            Struct(fields) | Union(fields) => {
-                                if variant_id.is_some() {
-                                    return None;
-                                };
-                                fields.get(*field_id)?.ty.clone().substitute(&tref.generics)
-                            }
-                            Enum(variants) => {
-                                let variant_id = (*variant_id)?;
-                                let variant = variants.get(variant_id)?;
-                                variant
-                                    .fields
-                                    .get(*field_id)?
-                                    .ty
-                                    .clone()
-                                    .substitute(&tref.generics)
-                            }
-                            Opaque | Alias(_) | Error(_) => return None,
-                        }
+            Field(type_decl_id, variant_id, field_id) => {
+                // Can fail if the type declaration was not translated.
+                let type_decl = krate.type_decls.get(*type_decl_id)?;
+                let tref = ty.as_adt_ref()?;
+                assert!(*type_decl_id == tref.id);
+                use TypeDeclKind::*;
+                match &type_decl.kind {
+                    Struct(fields) | Union(fields) => {
+                        if variant_id.is_some() {
+                            return None;
+                        };
+                        fields.get(*field_id)?.ty.clone().substitute(&tref.generics)
                     }
-                    Tuple(_) => ty
-                        .as_tuple()?
-                        .get(TypeVarId::from(usize::from(*field_id)))?
-                        .clone(),
+                    Enum(variants) => {
+                        let variant_id = (*variant_id)?;
+                        let variant = variants.get(variant_id)?;
+                        variant
+                            .fields
+                            .get(*field_id)?
+                            .ty
+                            .clone()
+                            .substitute(&tref.generics)
+                    }
+                    Opaque | Alias(_) | Error(_) => return None,
                 }
             }
             PtrMetadata => ty.get_ptr_metadata(krate).into_type(),

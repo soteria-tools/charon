@@ -71,7 +71,7 @@ pub enum ProjectionElem {
     /// We allow projections to be used as left-values and right-values.
     /// We should never have projections to fields of symbolic variants (they
     /// should have been expanded before through a match).
-    Field(FieldProjKind, FieldId),
+    Field(TypeDeclId, Option<VariantId>, FieldId),
     /// A built-in pointer (a reference, raw pointer, or `Box`) in Rust is always a fat pointer: it
     /// contains an address and metadata for the pointed-to place. This metadata is empty for sized
     /// types, it's the length for slices, and the vtable for `dyn Trait`.
@@ -97,28 +97,6 @@ pub enum ProjectionElem {
         #[drive(skip)]
         from_end: bool,
     },
-}
-
-#[derive(
-    Debug,
-    PartialEq,
-    Eq,
-    Copy,
-    Clone,
-    EnumIsA,
-    EnumAsGetters,
-    SerializeState,
-    DeserializeState,
-    Drive,
-    DriveMut,
-    DriveTwo,
-)]
-#[cfg_attr(feature = "charon_on_charon", charon::variants_prefix("Proj"))]
-pub enum FieldProjKind {
-    Adt(TypeDeclId, Option<VariantId>),
-    /// If we project from a tuple, the projection kind gives the arity of the tuple.
-    #[drive(skip)]
-    Tuple(usize),
 }
 
 #[derive(

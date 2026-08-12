@@ -6,12 +6,18 @@ opaque type core::marker::MetaSized::{vtable}
 #[lang_item(MetaSized)]
 pub trait MetaSized<Self>
 
+struct () {}
+
 // Full name: core::marker::Destruct
 #[lang_item(Destruct)]
 pub trait Destruct<Self>
 {
     fn drop_glue<'_0_1>;
     non-dyn-compatible
+}
+
+struct str {
+  [u8],
 }
 
 struct test_crate::Trait::{vtable} {

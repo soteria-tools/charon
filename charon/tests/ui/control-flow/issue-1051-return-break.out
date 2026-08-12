@@ -1,5 +1,12 @@
 # Final LLBC before serialization:
 
+struct () {}
+
+struct (_, _)<A, B> {
+  A,
+  B,
+}
+
 // Full name: test_crate::f
 pub fn f(y: u32) -> bool
 {

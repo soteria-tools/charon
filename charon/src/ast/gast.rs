@@ -716,7 +716,7 @@ macro_rules! convert_item_ref {
         }
     };
 }
-convert_item_ref!(TypeDeclRef(TypeId));
+convert_item_ref!(TypeDeclRef(TypeDeclId));
 convert_item_ref!(FunDeclRef(FunDeclId));
 convert_item_ref!(GlobalDeclRef(GlobalDeclId));
 convert_item_ref!(TraitDeclRef(TraitDeclId));

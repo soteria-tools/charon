@@ -28,21 +28,18 @@ fn box_pointee_pointer_assignment(rvalue: &Rvalue) -> Option<Place> {
     else {
         return None;
     };
-    let (field_base, ProjectionElem::Field(_, FieldId::ZERO)) = hidden_pointer.as_projection()?
+    let (field_base, ProjectionElem::Field(_, _, FieldId::ZERO)) =
+        hidden_pointer.as_projection()?
     else {
         return None;
     };
     let (box_place, ProjectionElem::Deref) = field_base.as_projection()? else {
         return None;
     };
-    let TyKind::Adt(TypeDeclRef {
-        id: TypeId::Builtin(BuiltinTy::Box),
-        generics: box_generics,
-    }) = box_place.ty().kind()
-    else {
+    let TyKind::Adt(t_ref, Some(BuiltinTy::Box)) = box_place.ty().kind() else {
         return None;
     };
-    if &box_generics.types[0] != raw_ptr_ty.as_raw_ptr()?.0 {
+    if &t_ref.generics.types[0] != raw_ptr_ty.as_raw_ptr()?.0 {
         return None;
     }
     Some(box_place.clone().deref())

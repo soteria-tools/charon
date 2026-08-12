@@ -14,6 +14,8 @@ pub fn repr_name(n: &Name) -> String {
             PathElem::Impl(..) => "<impl>".to_string(),
             PathElem::Instantiated(..) => "<mono>".to_string(),
             PathElem::Target(target) => target.clone(),
+            PathElem::Builtin(BuiltinPathElem::Tuple(n)) => format!("<tuple_{n}>"),
+            PathElem::Builtin(BuiltinPathElem::Str) => "<str>".to_string(),
         })
         .join("::")
 }
@@ -117,7 +119,7 @@ impl<'a> GenerateCtx<'a> {
 
     /// For a type that refers to an ADT, return the name of that ADT.
     pub fn type_to_rust_name(&self, ty: &Ty) -> Option<&str> {
-        let index_ty: TypeDeclId = *ty.as_adt()?.id.as_adt()?;
+        let index_ty: TypeDeclId = ty.as_adt_ref()?.id;
         self.crate_data.item_name(index_ty).short_str()
     }
 
@@ -138,7 +140,7 @@ impl<'a> GenerateCtx<'a> {
                 _ => "int".to_string(),
             },
             TyKind::Literal(LiteralTy::Float(_)) => "float_of_json".to_string(),
-            TyKind::Adt(tref) => {
+            TyKind::Adt(tref, builtin) => {
                 let mut args = tref
                     .generics
                     .types
@@ -152,8 +154,9 @@ impl<'a> GenerateCtx<'a> {
                         }
                     })
                     .collect_vec();
-                match tref.id {
-                    TypeId::Adt(id) => {
+                match builtin {
+                    None => {
+                        let id = tref.id;
                         let mut base_ty = if let Some(tdecl) = self.crate_data.type_decls.get(id) {
                             self.type_to_ocaml_ident(tdecl)
                         } else {
@@ -187,8 +190,8 @@ impl<'a> GenerateCtx<'a> {
                         };
                         format!("{args}{base_ty}")
                     }
-                    TypeId::Builtin(BuiltinTy::Box) => args[0].clone(),
-                    TypeId::Tuple => args.iter().join("*"),
+                    Some(BuiltinTy::Box) => args[0].clone(),
+                    Some(BuiltinTy::Tuple) => args.iter().join("*"),
                     _ => unimplemented!("{ty:?}"),
                 }
             }

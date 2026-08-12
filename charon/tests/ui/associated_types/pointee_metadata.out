@@ -78,6 +78,8 @@ pub trait Ord<Self>
     non-dyn-compatible
 }
 
+struct () {}
+
 // Full name: core::hash::Hasher
 pub trait Hasher<Self>
 {
@@ -122,6 +124,11 @@ pub trait Freeze<Self>
 #[lang_item(Unpin)]
 pub trait Unpin<Self>
 
+struct (_, _)<A, B> {
+  A,
+  B,
+}
+
 // Full name: core::ptr::metadata::Pointee
 #[lang_item(PointeeTrait)]
 pub trait Pointee<Self>
@@ -142,6 +149,10 @@ pub trait Pointee<Self>
 // Full name: core::ptr::const_ptr::{*const T}::to_raw_parts
 pub fn to_raw_parts<T>(_1: *const T) -> (*const (), {built_in impl Pointee for T}::Metadata)
 = <opaque>
+
+struct str {
+  [u8],
+}
 
 // Full name: test_crate::empty_metadata
 fn empty_metadata()

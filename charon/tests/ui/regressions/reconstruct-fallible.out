@@ -1,5 +1,12 @@
 # Final LLBC before serialization:
 
+struct () {}
+
+struct (_, _)::<usize, bool> {
+  usize,
+  bool,
+}
+
 // Full name: test_crate::other
 fn other()
 {
@@ -12,10 +19,10 @@ fn other()
 }
 
 // Full name: test_crate::sink_tuple
-fn sink_tuple(_x: (usize, bool))
+fn sink_tuple(_x: (_, _)::<usize, bool>)
 {
     let _0: (); // return
-    let _x: (usize, bool); // arg #1
+    let _x: (_, _)::<usize, bool>; // arg #1
 
     storage_live(_0)
     _0 = ()
@@ -54,10 +61,10 @@ fn sink_bool(_x: bool)
 fn must_preserve_tuple()
 {
     let _0: (); // return
-    let z: (usize, bool); // local
+    let z: (_, _)::<usize, bool>; // local
     let _2: (); // anonymous local
     let _3: (); // anonymous local
-    let _4: (usize, bool); // anonymous local
+    let _4: (_, _)::<usize, bool>; // anonymous local
 
     storage_live(_0)
     _0 = ()
@@ -83,7 +90,7 @@ fn must_preserve_tuple()
 fn can_erase_check()
 {
     let _0: (); // return
-    let z: (usize, bool); // local
+    let z: (_, _)::<usize, bool>; // local
     let _2: (); // anonymous local
     let _3: (); // anonymous local
     let _4: usize; // anonymous local
@@ -112,7 +119,7 @@ fn can_erase_check()
 fn must_preserve_overflow_flag()
 {
     let _0: (); // return
-    let z: (usize, bool); // local
+    let z: (_, _)::<usize, bool>; // local
     let _2: (); // anonymous local
     let _3: (); // anonymous local
     let _4: bool; // anonymous local
@@ -141,12 +148,12 @@ fn must_preserve_overflow_flag()
 fn mixed_field0_and_cross_block_tuple()
 {
     let _0: (); // return
-    let z: (usize, bool); // local
+    let z: (_, _)::<usize, bool>; // local
     let _2: (); // anonymous local
     let _3: usize; // anonymous local
     let _4: (); // anonymous local
     let _5: (); // anonymous local
-    let _6: (usize, bool); // anonymous local
+    let _6: (_, _)::<usize, bool>; // anonymous local
 
     storage_live(_0)
     _0 = ()
@@ -179,7 +186,7 @@ fn mixed_field0_and_cross_block_tuple()
 fn can_erase_check_multi_block()
 {
     let _0: (); // return
-    let z: (usize, bool); // local
+    let z: (_, _)::<usize, bool>; // local
     let _2: (); // anonymous local
     let _3: (); // anonymous local
     let _4: usize; // anonymous local

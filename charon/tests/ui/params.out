@@ -16,6 +16,13 @@ pub trait Sized<Self>
 #[lang_item(GlobalAlloc)]
 pub struct Global {}
 
+// Full name: alloc::boxed::Box
+#[lang_item(OwnedBox)]
+pub opaque type Box<T>
+where
+    TraitClause0: (T: MetaSized),
+    TraitClause1: (type_error("removed allocator parameter"): Sized),
+
 // Full name: test_crate::test_static
 fn test_static(x: &'static u32) -> &'static u32
 {
@@ -55,7 +62,7 @@ where
     TypeOutlives3: T1: 'b,
 {
   V1(&'a mut T1, &'b mut T2),
-  V2(alloc::boxed::Box<E1<'a, 'b, T2, T1>[TraitClause1, TraitClause0]>[{built_in impl MetaSized for E1<'a, 'b, T2, T1>[TraitClause1, TraitClause0]}, {built_in impl Sized for Global}]),
+  V2(Box<E1<'a, 'b, T2, T1>[TraitClause1, TraitClause0]>[{built_in impl MetaSized for E1<'a, 'b, T2, T1>[TraitClause1, TraitClause0]}, {built_in impl Sized for Global}]),
 }
 
 // Full name: test_crate::E2
@@ -69,7 +76,7 @@ where
     TypeOutlives3: T2: 'a,
 {
   V1(&'a mut T1, &'b mut T2),
-  V3(alloc::boxed::Box<E2<'b, 'a, T1, T2>[TraitClause0, TraitClause1]>[{built_in impl MetaSized for E2<'b, 'a, T1, T2>[TraitClause0, TraitClause1]}, {built_in impl Sized for Global}]),
+  V3(Box<E2<'b, 'a, T1, T2>[TraitClause0, TraitClause1]>[{built_in impl MetaSized for E2<'b, 'a, T1, T2>[TraitClause0, TraitClause1]}, {built_in impl Sized for Global}]),
 }
 
 // Full name: test_crate::E3
@@ -87,8 +94,8 @@ where
     RegionOutlives1: 'b: 'c,
 {
   V1(&'a mut T1, &'b mut T2),
-  V2(alloc::boxed::Box<E3<'a, 'b, 'c, T2, T1>[TraitClause1, TraitClause0]>[{built_in impl MetaSized for E3<'a, 'b, 'c, T2, T1>[TraitClause1, TraitClause0]}, {built_in impl Sized for Global}]),
-  V3(alloc::boxed::Box<E3<'b, 'a, 'c, T1, T2>[TraitClause0, TraitClause1]>[{built_in impl MetaSized for E3<'b, 'a, 'c, T1, T2>[TraitClause0, TraitClause1]}, {built_in impl Sized for Global}]),
+  V2(Box<E3<'a, 'b, 'c, T2, T1>[TraitClause1, TraitClause0]>[{built_in impl MetaSized for E3<'a, 'b, 'c, T2, T1>[TraitClause1, TraitClause0]}, {built_in impl Sized for Global}]),
+  V3(Box<E3<'b, 'a, 'c, T1, T2>[TraitClause0, TraitClause1]>[{built_in impl MetaSized for E3<'b, 'a, 'c, T1, T2>[TraitClause0, TraitClause1]}, {built_in impl Sized for Global}]),
   V4(&'c &'a T1),
 }
 
@@ -109,8 +116,8 @@ where
     RegionOutlives1: 'b: 'c,
 {
   V1(&'a mut T1, &'b mut T2),
-  V2(alloc::boxed::Box<E4<'a, 'b, 'c, T2, T1, T3>[TraitClause1, TraitClause0, TraitClause2]>[{built_in impl MetaSized for E4<'a, 'b, 'c, T2, T1, T3>[TraitClause1, TraitClause0, TraitClause2]}, {built_in impl Sized for Global}]),
-  V3(alloc::boxed::Box<E4<'b, 'a, 'c, T1, T2, T3>[TraitClause0, TraitClause1, TraitClause2]>[{built_in impl MetaSized for E4<'b, 'a, 'c, T1, T2, T3>[TraitClause0, TraitClause1, TraitClause2]}, {built_in impl Sized for Global}]),
+  V2(Box<E4<'a, 'b, 'c, T2, T1, T3>[TraitClause1, TraitClause0, TraitClause2]>[{built_in impl MetaSized for E4<'a, 'b, 'c, T2, T1, T3>[TraitClause1, TraitClause0, TraitClause2]}, {built_in impl Sized for Global}]),
+  V3(Box<E4<'b, 'a, 'c, T1, T2, T3>[TraitClause0, TraitClause1, TraitClause2]>[{built_in impl MetaSized for E4<'b, 'a, 'c, T1, T2, T3>[TraitClause0, TraitClause1, TraitClause2]}, {built_in impl Sized for Global}]),
   V4(&'c &'a T3),
 }
 
@@ -131,8 +138,8 @@ where
     RegionOutlives1: 'c: 'b,
 {
   V1(&'a mut T1, &'b mut T2),
-  V2(alloc::boxed::Box<E5<'a, 'b, 'c, T2, T1, T3>[TraitClause1, TraitClause0, TraitClause2]>[{built_in impl MetaSized for E5<'a, 'b, 'c, T2, T1, T3>[TraitClause1, TraitClause0, TraitClause2]}, {built_in impl Sized for Global}]),
-  V3(alloc::boxed::Box<E5<'b, 'a, 'c, T1, T2, T3>[TraitClause0, TraitClause1, TraitClause2]>[{built_in impl MetaSized for E5<'b, 'a, 'c, T1, T2, T3>[TraitClause0, TraitClause1, TraitClause2]}, {built_in impl Sized for Global}]),
+  V2(Box<E5<'a, 'b, 'c, T2, T1, T3>[TraitClause1, TraitClause0, TraitClause2]>[{built_in impl MetaSized for E5<'a, 'b, 'c, T2, T1, T3>[TraitClause1, TraitClause0, TraitClause2]}, {built_in impl Sized for Global}]),
+  V3(Box<E5<'b, 'a, 'c, T1, T2, T3>[TraitClause0, TraitClause1, TraitClause2]>[{built_in impl MetaSized for E5<'b, 'a, 'c, T1, T2, T3>[TraitClause0, TraitClause1, TraitClause2]}, {built_in impl Sized for Global}]),
   V4(&'a &'c T3),
 }
 

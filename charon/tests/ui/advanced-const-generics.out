@@ -9,6 +9,8 @@ pub trait PartialEq<Self, Rhs>
     vtable: core::cmp::PartialEq::{vtable}<Rhs>
 }
 
+struct () {}
+
 // Full name: core::cmp::Eq
 #[diagnostic_item("Eq")]
 pub trait Eq<Self>
@@ -63,6 +65,15 @@ where
 {
   Ok(T),
   Err(E),
+}
+
+struct str {
+  [u8],
+}
+
+struct (_, _)<A, B> {
+  A,
+  B,
 }
 
 // Full name: test_crate::Foo

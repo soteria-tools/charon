@@ -81,6 +81,8 @@ where
     TypeOutlives1: T: '_1,
 = <opaque>
 
+struct () {}
+
 // Full name: test_crate::main
 fn main()
 {

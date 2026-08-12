@@ -2,6 +2,7 @@
 use crate::ast::*;
 use derive_generic_visitor::{Drive, DriveMut, DriveTwo};
 use macros::{EnumAsGetters, EnumIsA};
+use serde::{Deserialize, Serialize};
 use serde_state::{DeserializeState, SerializeState};
 
 generate_index_type!(Disambiguator);
@@ -33,6 +34,22 @@ pub enum PathElem {
     /// This item is only available on the given target. Only appears in multi-target mode.
     #[serde_state(stateless)]
     Target(#[drive(skip)] TargetTriple),
+    /// A path element for a builtin, like tuples
+    #[serde_state(stateless)]
+    Builtin(#[drive(skip)] BuiltinPathElem),
+}
+
+/// Used for builtin items, rather than hardcoding these as strings.
+#[derive(
+    Debug, Clone, Copy, PartialEq, Eq, Hash, Serialize, Deserialize, EnumIsA, EnumAsGetters,
+)]
+#[cfg_attr(feature = "charon_on_charon", charon::variants_prefix("Pe"))]
+pub enum BuiltinPathElem {
+    /// The tuple of the given arity.
+    Tuple(usize),
+    /// `str`, which is a struct containing a `[u8]` the standard library expects
+    /// to be valid UTF-8.
+    Str,
 }
 
 /// There are two kinds of `impl` blocks:

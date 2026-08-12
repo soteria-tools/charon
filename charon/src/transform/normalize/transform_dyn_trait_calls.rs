@@ -64,7 +64,7 @@ fn transform_dyn_trait_call(
         };
         vtable_ty.clone().substitute_with_tref(trait_ref)
     };
-    let vtable_decl_id = *vtable_decl_ref.id.as_adt().unwrap();
+    let vtable_decl_id = vtable_decl_ref.id;
     let Some(vtable_decl) = ctx.ctx.translated.type_decls.get(vtable_decl_id) else {
         return Ok(()); // Missing data
     };
@@ -108,14 +108,14 @@ fn transform_dyn_trait_call(
     };
 
     // Construct the `(*ptr.ptr_metadata).method_field` place.
-    let vtable_ty = TyKind::Adt(vtable_decl_ref).into_ty();
+    let vtable_ty = TyKind::Adt(vtable_decl_ref, None).into_ty();
     let ptr_to_vtable_ty = Ty::new(TyKind::RawPtr(vtable_ty.clone(), RefKind::Shared));
     let method_field_place = dyn_trait_place
         .clone()
         .project(ProjectionElem::PtrMetadata, ptr_to_vtable_ty)
         .project(ProjectionElem::Deref, vtable_ty)
         .project(
-            ProjectionElem::Field(FieldProjKind::Adt(vtable_decl_id, None), method_field_id),
+            ProjectionElem::Field(vtable_decl_id, None, method_field_id),
             method_ty,
         );
 

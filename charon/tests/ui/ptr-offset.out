@@ -1,5 +1,12 @@
 # Final LLBC before serialization:
 
+struct (_, _)<A, B> {
+  A,
+  B,
+}
+
+struct () {}
+
 // Full name: core::ptr::const_ptr::{*const T}::addr
 pub fn addr<T>(_1: *const T) -> usize
 = <opaque>
@@ -133,6 +140,16 @@ pub fn panic_nounwind_fmt<'_0>(_1: Arguments<'_0>, _2: bool) -> !
 // Full name: core::ub_checks::check_language_ub
 fn check_language_ub() -> bool
 = <opaque>
+
+struct str {
+  [u8],
+}
+
+struct (_, _, _)<A, B, C> {
+  A,
+  B,
+  C,
+}
 
 // Full name: core::ptr::const_ptr::{*const T}::offset::runtime_offset_nowrap
 fn runtime_offset_nowrap(this: *const (), count: isize, size: usize) -> bool

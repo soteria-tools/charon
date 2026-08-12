@@ -87,9 +87,8 @@ impl VisitAst for OutlivesGatherer<'_> {
                         .insert(RegionBinder::empty(OutlivesPred(ty.clone(), shorter)));
                 }
             }
-            TyKind::Adt(type_ref)
-                if let TypeId::Adt(type_id) = type_ref.id
-                    && let Some(decl) = self.type_decls.get(type_id)
+            TyKind::Adt(type_ref, _)
+                if let Some(decl) = self.type_decls.get(type_ref.id)
                     && let Some(generics) = type_ref
                         .generics
                         .clone()
@@ -163,10 +162,8 @@ impl<'a> ClosureOutlivesComputer<'a> {
             self.type_decls[type_id]
                 .kind
                 .dyn_visit(|type_ref: &TypeDeclRef| {
-                    if let TypeId::Adt(type_id) = type_ref.id
-                        && self.closure_tys.get(&type_id).is_some()
-                    {
-                        dependencies.push(type_id);
+                    if self.closure_tys.get(&type_ref.id).is_some() {
+                        dependencies.push(type_ref.id);
                     }
                 });
             for dependency in dependencies {

@@ -4,6 +4,8 @@
 #[lang_item(MetaSized)]
 pub trait MetaSized<Self>
 
+struct () {}
+
 // Full name: core::marker::Destruct
 #[lang_item(Destruct)]
 pub trait Destruct<Self>
@@ -26,6 +28,11 @@ where
     TraitClause0: (Self: Drop),
     TypeOutlives0: Self: '_0,
 = <opaque>
+
+struct (_, _)<A, B> {
+  A,
+  B,
+}
 
 // Full name: test_crate::Foo
 struct Foo {}

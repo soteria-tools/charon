@@ -366,12 +366,23 @@ and builtin_index_op_of_json (ctx : of_json_ctx) (js : json) :
         Ok ({ is_array; mutability; is_range } : builtin_index_op)
     | _ -> Error "")
 
+and builtin_path_elem_of_json (ctx : of_json_ctx) (js : json) :
+    (builtin_path_elem, string) result =
+  combine_error_msgs js __FUNCTION__
+    (match js with
+    | `Assoc [ ("Tuple", tuple) ] ->
+        let* tuple = int_of_json ctx tuple in
+        Ok (PeTuple tuple)
+    | `String "Str" -> Ok PeStr
+    | _ -> Error "")
+
 and builtin_ty_of_json (ctx : of_json_ctx) (js : json) :
     (builtin_ty, string) result =
   combine_error_msgs js __FUNCTION__
     (match js with
     | `String "Box" -> Ok TBox
     | `String "Str" -> Ok TStr
+    | `String "Tuple" -> Ok TTuple
     | _ -> Error "")
 
 and byte_of_json (ctx : of_json_ctx) (js : json) : (byte, string) result =
@@ -570,19 +581,6 @@ and field_id_of_json (ctx : of_json_ctx) (js : json) : (field_id, string) result
   combine_error_msgs js __FUNCTION__
     (match js with
     | x -> FieldId.id_of_json ctx x
-    | _ -> Error "")
-
-and field_proj_kind_of_json (ctx : of_json_ctx) (js : json) :
-    (field_proj_kind, string) result =
-  combine_error_msgs js __FUNCTION__
-    (match js with
-    | `Assoc [ ("Adt", `List [ x_0; x_1 ]) ] ->
-        let* x_0 = type_decl_id_of_json ctx x_0 in
-        let* x_1 = option_of_json variant_id_of_json ctx x_1 in
-        Ok (ProjAdt (x_0, x_1))
-    | `Assoc [ ("Tuple", tuple) ] ->
-        let* tuple = int_of_json ctx tuple in
-        Ok (ProjTuple tuple)
     | _ -> Error "")
 
 and file_id_of_json (ctx : of_json_ctx) (js : json) : (file_id, string) result =
@@ -990,6 +988,9 @@ and path_elem_of_json (ctx : of_json_ctx) (js : json) :
     | `Assoc [ ("Target", target) ] ->
         let* target = string_of_json ctx target in
         Ok (PeTarget target)
+    | `Assoc [ ("Builtin", builtin) ] ->
+        let* builtin = builtin_path_elem_of_json ctx builtin in
+        Ok (PeBuiltin builtin)
     | _ -> Error "")
 
 and place_of_json (ctx : of_json_ctx) (js : json) : (place, string) result =
@@ -1037,10 +1038,11 @@ and projection_elem_of_json (ctx : of_json_ctx) (js : json) :
   combine_error_msgs js __FUNCTION__
     (match js with
     | `String "Deref" -> Ok Deref
-    | `Assoc [ ("Field", `List [ x_0; x_1 ]) ] ->
-        let* x_0 = field_proj_kind_of_json ctx x_0 in
-        let* x_1 = field_id_of_json ctx x_1 in
-        Ok (Field (x_0, x_1))
+    | `Assoc [ ("Field", `List [ x_0; x_1; x_2 ]) ] ->
+        let* x_0 = type_decl_id_of_json ctx x_0 in
+        let* x_1 = option_of_json variant_id_of_json ctx x_1 in
+        let* x_2 = field_id_of_json ctx x_2 in
+        Ok (Field (x_0, x_1, x_2))
     | `String "PtrMetadata" -> Ok PtrMetadata
     | `Assoc
         [ ("Index", `Assoc [ ("offset", offset); ("from_end", from_end) ]) ] ->
@@ -1412,9 +1414,10 @@ and ty_of_json (ctx : of_json_ctx) (js : json) : (ty, string) result =
 and ty_kind_of_json (ctx : of_json_ctx) (js : json) : (ty_kind, string) result =
   combine_error_msgs js __FUNCTION__
     (match js with
-    | `Assoc [ ("Adt", adt) ] ->
-        let* adt = type_decl_ref_of_json ctx adt in
-        Ok (TAdt adt)
+    | `Assoc [ ("Adt", `List [ x_0; x_1 ]) ] ->
+        let* x_0 = type_decl_ref_of_json ctx x_0 in
+        let* x_1 = option_of_json builtin_ty_of_json ctx x_1 in
+        Ok (TAdt (x_0, x_1))
     | `Assoc [ ("TypeVar", type_var) ] ->
         let* type_var =
           de_bruijn_var_of_json type_var_id_of_json ctx type_var
@@ -1478,21 +1481,9 @@ and type_decl_ref_of_json (ctx : of_json_ctx) (js : json) :
   combine_error_msgs js __FUNCTION__
     (match js with
     | `Assoc [ ("id", id); ("generics", generics) ] ->
-        let* id = type_id_of_json ctx id in
+        let* id = type_decl_id_of_json ctx id in
         let* generics = box_of_json generic_args_of_json ctx generics in
         Ok ({ id; generics } : type_decl_ref)
-    | _ -> Error "")
-
-and type_id_of_json (ctx : of_json_ctx) (js : json) : (type_id, string) result =
-  combine_error_msgs js __FUNCTION__
-    (match js with
-    | `Assoc [ ("Adt", adt) ] ->
-        let* adt = type_decl_id_of_json ctx adt in
-        Ok (TAdtId adt)
-    | `String "Tuple" -> Ok TTuple
-    | `Assoc [ ("Builtin", builtin) ] ->
-        let* builtin = builtin_ty_of_json ctx builtin in
-        Ok (TBuiltin builtin)
     | _ -> Error "")
 
 and type_param_of_json (ctx : of_json_ctx) (js : json) :
@@ -3595,6 +3586,7 @@ and type_decl_of_json (ctx : of_json_ctx) (js : json) :
           ("item_meta", item_meta);
           ("generics", generics);
           ("src", src);
+          ("builtin", builtin);
           ("kind", kind);
           ("layout", layout);
           ("ptr_metadata", ptr_metadata);
@@ -3603,13 +3595,23 @@ and type_decl_of_json (ctx : of_json_ctx) (js : json) :
         let* item_meta = item_meta_of_json ctx item_meta in
         let* generics = generic_params_of_json ctx generics in
         let* src = item_source_of_json ctx src in
+        let* builtin = option_of_json builtin_ty_of_json ctx builtin in
         let* kind = type_decl_kind_of_json ctx kind in
         let* layout =
           index_map_of_json string_of_json layout_of_json int_of_json ctx layout
         in
         let* ptr_metadata = ptr_metadata_of_json ctx ptr_metadata in
         Ok
-          ({ def_id; item_meta; generics; src; kind; layout; ptr_metadata }
+          ({
+             def_id;
+             item_meta;
+             generics;
+             src;
+             builtin;
+             kind;
+             layout;
+             ptr_metadata;
+           }
             : type_decl)
     | _ -> Error "")
 

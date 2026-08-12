@@ -224,7 +224,7 @@ impl<'tcx> ItemTransCtx<'tcx, '_> {
         args: &hax::ClosureArgs,
     ) -> Result<Ty, Error> {
         let tref = self.translate_closure_type_ref(span, args)?;
-        Ok(TyKind::Adt(tref).into_ty())
+        Ok(TyKind::Adt(tref, None).into_ty())
     }
 
     /// Translate the types of the captured variables. Should be called only in
@@ -263,6 +263,27 @@ impl<'tcx> ItemTransCtx<'tcx, '_> {
         Ok(TypeDeclKind::Struct(fields))
     }
 
+    /// The tupled closure arguments for an `Fn*` trait.
+    fn closure_tupled_args_ty(
+        &mut self,
+        span: Span,
+        implemented_trait: &TraitDeclRef,
+        input_tys: Vec<Ty>,
+    ) -> Result<Ty, Error> {
+        // `Fn*<Self, Args>`
+        let tupled = &implemented_trait.generics.types[TypeVarId::from_usize(1)];
+        let TyKind::Adt(tref, builtin) = tupled.kind() else {
+            raise_error!(self, span, "the arguments of a `Fn*` bound are not a tuple");
+        };
+        // The type decl ref will have the right tuple arity, but the wrong generics;
+        // so reuse those from the input types.
+        let mut tref = tref.clone();
+        for (arg, ty) in tref.generics.types.iter_mut().zip(input_tys) {
+            *arg = ty;
+        }
+        Ok(TyKind::Adt(tref, *builtin).into_ty())
+    }
+
     /// Given an item that is a closure, generate the signature of the
     /// `call_once`/`call_mut`/`call` method (depending on `target_kind`).
     fn translate_closure_method_sig(
@@ -271,6 +292,7 @@ impl<'tcx> ItemTransCtx<'tcx, '_> {
         span: Span,
         args: &hax::ClosureArgs,
         target_kind: ClosureKind,
+        implemented_trait: &TraitDeclRef,
     ) -> Result<RegionBinder<FunSig>, Error> {
         let signature = &args.fn_sig;
         trace!(
@@ -303,8 +325,9 @@ impl<'tcx> ItemTransCtx<'tcx, '_> {
 
         // The types that the closure takes as input.
         let input_tys: Vec<Ty> = mem::take(&mut fun_sig.inputs);
-        // The method takes `self` and the closure inputs as a tuple.
-        fun_sig.inputs = vec![state_ty, Ty::mk_tuple(input_tys)];
+        // The method takes `self` and the closure inputs as a tuple
+        let tupled_args_ty = self.closure_tupled_args_ty(span, implemented_trait, input_tys)?;
+        fun_sig.inputs = vec![state_ty, tupled_args_ty];
 
         Ok(RegionBinder {
             regions: bound_regions,
@@ -345,6 +368,7 @@ impl<'tcx> ItemTransCtx<'tcx, '_> {
 
                 // The (Arg1, Arg2, ..) type.
                 let tupled_ty = &signature.inputs[1];
+                let tuple_ref = tupled_ty.as_adt_ref().unwrap();
 
                 blocks.dyn_visit_mut(|local: &mut LocalId| {
                     if local.index() >= 2 {
@@ -352,6 +376,8 @@ impl<'tcx> ItemTransCtx<'tcx, '_> {
                     }
                 });
 
+                // Remember how many arguments there are
+                let closure_arg_count = locals.arg_count - 1;
                 let mut old_locals = mem::take(&mut locals.locals).into_iter();
                 locals.arg_count = 2;
                 locals.locals.push(old_locals.next().unwrap()); // ret
@@ -362,14 +388,11 @@ impl<'tcx> ItemTransCtx<'tcx, '_> {
                     l
                 }));
 
-                let untupled_args = tupled_ty.as_tuple().unwrap();
-                let closure_arg_count = untupled_args.len();
-                let new_stts = untupled_args.iter().cloned().enumerate().map(|(i, ty)| {
+                let untupled_args =
+                    (0..closure_arg_count).map(|i| locals.locals[LocalId::new(i + 3)].ty.clone());
+                let new_stts = untupled_args.enumerate().map(|(i, ty)| {
                     let nth_field = tupled_arg.clone().project(
-                        ProjectionElem::Field(
-                            FieldProjKind::Tuple(closure_arg_count),
-                            FieldId::new(i),
-                        ),
+                        ProjectionElem::Field(tuple_ref.id, None, FieldId::new(i)),
                         ty,
                     );
                     let local_id = LocalId::new(i + 3);
@@ -499,13 +522,14 @@ impl<'tcx> ItemTransCtx<'tcx, '_> {
         let impl_ref = self.translate_closure_impl_ref(span, args, target_kind)?;
         let src = ItemSource::TraitImpl {
             impl_ref,
-            trait_ref: implemented_trait,
+            trait_ref: implemented_trait.clone(),
             item_id: method_id.into(),
             reuses_default: false,
         };
 
         // Translate the function signature
-        let bound_sig = self.translate_closure_method_sig(def, span, args, target_kind)?;
+        let bound_sig =
+            self.translate_closure_method_sig(def, span, args, target_kind, &implemented_trait)?;
         // We give it the lifetime parameter we had prepared for that purpose.
         let signature = bound_sig.apply(
             self.the_only_binder()
@@ -598,7 +622,12 @@ impl<'tcx> ItemTransCtx<'tcx, '_> {
         def: &hax::FullDef<'tcx>,
     ) -> Result<FunDecl, Error> {
         let span = item_meta.span;
-        let hax::FullDefKind::Closure { args: closure, .. } = &def.kind else {
+        let hax::FullDefKind::Closure {
+            args: closure,
+            fn_once_impl,
+            ..
+        } = &def.kind
+        else {
             unreachable!()
         };
 
@@ -640,19 +669,21 @@ impl<'tcx> ItemTransCtx<'tcx, '_> {
                 .enumerate()
                 .map(|(i, ty)| builder.new_var(Some(format!("arg{}", i + 1)), ty.clone()))
                 .collect();
-            let args_tupled_ty = Ty::mk_tuple(signature.inputs.clone());
+            let fn_once_trait = self.translate_trait_predicate(span, &fn_once_impl.trait_pred)?;
+            let args_tupled_ty =
+                self.closure_tupled_args_ty(span, &fn_once_trait, signature.inputs.clone())?;
             let args_tupled = builder.new_var(Some("args".to_string()), args_tupled_ty.clone());
             let state = builder.new_var(Some("state".to_string()), state_ty.clone());
 
             builder.push_statement(StatementKind::Assign(
                 args_tupled.clone(),
                 Rvalue::Aggregate(
-                    AggregateKind::Adt(args_tupled_ty.as_adt().unwrap().clone(), None, None),
+                    AggregateKind::Adt(args_tupled_ty.as_adt_ref().unwrap().clone(), None, None),
                     args.into_iter().map(Operand::Move).collect(),
                 ),
             ));
 
-            let state_ty_adt = state_ty.as_adt().unwrap();
+            let state_ty_adt = state_ty.as_adt_ref().unwrap();
             builder.push_statement(StatementKind::Assign(
                 state.clone(),
                 Rvalue::Aggregate(AggregateKind::Adt(state_ty_adt.clone(), None, None), vec![]),

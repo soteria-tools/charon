@@ -12,6 +12,8 @@ pub trait Sized<Self>
     non-dyn-compatible
 }
 
+struct () {}
+
 // Full name: test_crate::HasLifetimeAssoc
 pub trait HasLifetimeAssoc<'a, Self>
 {

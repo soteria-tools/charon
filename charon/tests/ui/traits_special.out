@@ -23,6 +23,8 @@ where
   Err(E),
 }
 
+struct () {}
+
 // Full name: test_crate::From
 pub trait From<Self, T>
 {

@@ -1,5 +1,9 @@
 # Final LLBC before serialization:
 
+struct (_,)<A> {
+  A,
+}
+
 // Full name: core::marker::MetaSized
 #[lang_item(MetaSized)]
 pub trait MetaSized<Self>
@@ -43,6 +47,8 @@ pub trait FnMut<Self, Args, Self_Clause1_Output>
     fn call_mut<'_0_1>;
     vtable: core::ops::function::FnMut::{vtable}<Args, Self_Clause1_Output>
 }
+
+struct () {}
 
 // Full name: core::marker::Destruct
 #[lang_item(Destruct)]
@@ -115,7 +121,12 @@ where
     TypeOutlives0: T: '_0,
 = <opaque>
 
-// Full name: test_crate::<tuple_1>::{impl Destruct for (A,)}::drop_glue
+struct (_, _)<A, B> {
+  A,
+  B,
+}
+
+// Full name: (_,)::{impl Destruct for (A,)}::drop_glue
 unsafe fn impl_Destruct_for_tuple::drop_glue<'_0, A>(_1: &'_0 mut (A,))
 where
     TypeOutlives0: A: '_0,
@@ -132,7 +143,7 @@ where
     return
 }
 
-// Full name: test_crate::<tuple_1>::{impl Destruct for (A,)}
+// Full name: (_,)::{impl Destruct for (A,)}
 impl<A> "impl_Destruct_for_tuple" Destruct for (A,) {
     fn drop_glue<'_0_1> = impl_Destruct_for_tuple::drop_glue<'_0_1, A>
     non-dyn-compatible
@@ -1923,7 +1934,7 @@ pub fn test_regions<'a>(x: &'a u32) -> u32
     _6 = &x
     _5 = &(*_6)
     _4 = (move _5,)
-    _0 = {impl Fn<(&'_ &'_ u32,), u32> for test_crate::test_regions::closure}::call<'22, '23, '24>(move _3, move _4)
+    _0 = {impl Fn<(&'_ &'_ u32,), u32> for test_crate::test_regions::closure}::call<'24, '25, '26>(move _3, move _4)
     ↳⚡ storage_dead(x)
         unwind_continue
     storage_dead(_5)
@@ -2821,7 +2832,7 @@ fn test_fnmut_with_ref()
     let _8: &'12 usize; // anonymous local
     let _9: &'13 usize; // anonymous local
     let _10: &'15 usize; // anonymous local
-    let _11: &'24 usize; // anonymous local
+    let _11: &'25 usize; // anonymous local
     let _12: usize; // anonymous local
 
     storage_live(_10)
@@ -2852,7 +2863,7 @@ fn test_fnmut_with_ref()
     _8 = &(*_9)
     _7 = &(*_8)
     _6 = (move _7,)
-    _4 = {impl FnMut<(&'_ usize,), ()> for test_crate::test_fnmut_with_ref::closure<'_0>}::call_mut<'21, '22, '23>(move _5, move _6)
+    _4 = {impl FnMut<(&'_ usize,), ()> for test_crate::test_fnmut_with_ref::closure<'_0>}::call_mut<'22, '23, '24>(move _5, move _6)
     ↳⚡ storage_dead(_9)
         unwind_continue
     storage_dead(_7)

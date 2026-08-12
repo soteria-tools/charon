@@ -50,6 +50,8 @@ impl Copy for ! {
     non-dyn-compatible
 }
 
+struct () {}
+
 // Full name: core::marker::Destruct
 #[lang_item(Destruct)]
 pub trait Destruct<Self>
@@ -199,6 +201,10 @@ where
     TraitClause0: (T: Sized),
     TypeOutlives0: T: 'static,
 = <opaque>
+
+struct (_,)<A> {
+  A,
+}
 
 // Full name: test_crate::FOO::__rust_std_internal_init_fn
 fn __rust_std_internal_init_fn() -> u32

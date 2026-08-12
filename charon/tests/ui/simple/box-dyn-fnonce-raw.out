@@ -23,6 +23,8 @@ where
 // Full name: core::alloc::AllocError
 pub struct AllocError {}
 
+struct () {}
+
 // Full name: core::marker::Sized
 #[lang_item(Sized)]
 pub trait Sized<Self>

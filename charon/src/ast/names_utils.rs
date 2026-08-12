@@ -104,9 +104,35 @@ impl Name {
         self
     }
 
+    /// Whether this names one of the items Rust builds into the language (tuples, `str`, arrays,
+    /// slices) or an item we generate for one, such as its drop glue. They belong to no crate, so
+    /// their name starts either with the builtin itself or -- for arrays and slices, which have no
+    /// declaration to name -- with the `impl` block we generated for them.
+    pub fn is_builtin(&self) -> bool {
+        matches!(
+            self.name.first(),
+            Some(PathElem::Builtin(_) | PathElem::Impl(_))
+        )
+    }
+
     /// Get the last identifier of the name, if any. This is useful for error messages and such.
-    /// Panics if the name is empty or if the last element is not an identifier.
+    /// Returns `None` if the name is empty or if the last element has no identifier to give.
     pub fn short_str(&self) -> Option<&str> {
-        Some(self.name.last()?.as_ident()?.0)
+        match self.name.last()? {
+            PathElem::Builtin(builtin) => Some(builtin.ident()),
+            PathElem::Ident(str, _) => Some(str),
+            _ => None,
+        }
+    }
+}
+
+impl BuiltinPathElem {
+    /// A spelling of this name that is a valid identifier.
+    pub fn ident(self) -> &'static str {
+        match self {
+            BuiltinPathElem::Tuple(0) => "unit",
+            BuiltinPathElem::Tuple(_) => "tuple",
+            BuiltinPathElem::Str => "str",
+        }
     }
 }

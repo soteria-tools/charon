@@ -38,6 +38,16 @@ pub enum Option::<&'_ [u64]> {
   Some(&'_ [u64]),
 }
 
+struct (_, _)<A, B> {
+  A,
+  B,
+}
+
+struct (_, _)::<u64, bool> {
+  u64,
+  bool,
+}
+
 // Full name: test_crate::MyConfig
 pub trait MyConfig<Self>
 {

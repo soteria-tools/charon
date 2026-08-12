@@ -12,6 +12,8 @@ pub trait Sized<Self>
     non-dyn-compatible
 }
 
+struct () {}
+
 // Full name: core::marker::Destruct
 #[lang_item(Destruct)]
 pub trait Destruct<Self>
@@ -98,7 +100,16 @@ where
 #[lang_item(String)]
 pub opaque type String
 
-// Full name: test_crate::<tuple_2>::{impl Destruct for (A, B)}::drop_glue
+struct (_, _)<A, B> {
+  A,
+  B,
+}
+
+struct (_,)<A> {
+  A,
+}
+
+// Full name: (_, _)::{impl Destruct for (A, B)}::drop_glue
 unsafe fn impl_Destruct_for_tuple::drop_glue<'_0, A, B>(_1: &'_0 mut (A, B))
 where
     TraitClause0: (A: Sized),
@@ -123,7 +134,7 @@ where
     return
 }
 
-// Full name: test_crate::<tuple_2>::{impl Destruct for (A, B)}
+// Full name: (_, _)::{impl Destruct for (A, B)}
 impl<A, B> "impl_Destruct_for_tuple" Destruct for (A, B)
 where
     TraitClause0: (A: Sized),

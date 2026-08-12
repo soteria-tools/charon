@@ -92,9 +92,7 @@ impl VisitAstMut for RemoveAdtClausesVisitor<'_> {
     }
 
     fn enter_type_decl_ref(&mut self, tref: &mut TypeDeclRef) {
-        if let TypeId::Adt(id) = tref.id
-            && !self.untouchable_adts.contains(&id)
-        {
+        if !self.untouchable_adts.contains(&tref.id) {
             tref.generics.trait_refs.clear();
         }
     }

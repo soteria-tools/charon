@@ -31,6 +31,10 @@ where
   Err(E),
 }
 
+struct str {
+  [u8],
+}
+
 // Full name: core::result::unwrap_failed
 fn unwrap_failed<'_0, '_1>(_1: &'_0 str, _2: &'_1 (dyn Debug + '_1)) -> !
 = <missing>

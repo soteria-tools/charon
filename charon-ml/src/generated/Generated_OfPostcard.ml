@@ -337,6 +337,17 @@ and builtin_index_op_of_postcard (ctx : of_postcard_ctx) (st : postcard_state) :
      let* is_range = bool_of_postcard ctx st in
      Ok ({ is_array; mutability; is_range } : builtin_index_op))
 
+and builtin_path_elem_of_postcard (ctx : of_postcard_ctx) (st : postcard_state)
+    : (builtin_path_elem, string) result =
+  combine_error_msgs st __FUNCTION__
+    (let* __tag = int_of_postcard ctx st in
+     match __tag with
+     | 0 ->
+         let* x_0 = usize_of_postcard ctx st in
+         Ok (PeTuple x_0)
+     | 1 -> Ok PeStr
+     | _ -> Error ("unknown enum variant tag: " ^ string_of_int __tag))
+
 and builtin_ty_of_postcard (ctx : of_postcard_ctx) (st : postcard_state) :
     (builtin_ty, string) result =
   combine_error_msgs st __FUNCTION__
@@ -344,6 +355,7 @@ and builtin_ty_of_postcard (ctx : of_postcard_ctx) (st : postcard_state) :
      match __tag with
      | 0 -> Ok TBox
      | 1 -> Ok TStr
+     | 2 -> Ok TTuple
      | _ -> Error ("unknown enum variant tag: " ^ string_of_int __tag))
 
 and byte_of_postcard (ctx : of_postcard_ctx) (st : postcard_state) :
@@ -528,20 +540,6 @@ and dyn_predicate_of_postcard (ctx : of_postcard_ctx) (st : postcard_state) :
 and field_id_of_postcard (ctx : of_postcard_ctx) (st : postcard_state) :
     (field_id, string) result =
   combine_error_msgs st __FUNCTION__ (FieldId.id_of_postcard ctx st)
-
-and field_proj_kind_of_postcard (ctx : of_postcard_ctx) (st : postcard_state) :
-    (field_proj_kind, string) result =
-  combine_error_msgs st __FUNCTION__
-    (let* __tag = int_of_postcard ctx st in
-     match __tag with
-     | 0 ->
-         let* x_0 = type_decl_id_of_postcard ctx st in
-         let* x_1 = option_of_postcard variant_id_of_postcard ctx st in
-         Ok (ProjAdt (x_0, x_1))
-     | 1 ->
-         let* x_0 = usize_of_postcard ctx st in
-         Ok (ProjTuple x_0)
-     | _ -> Error ("unknown enum variant tag: " ^ string_of_int __tag))
 
 and file_id_of_postcard (ctx : of_postcard_ctx) (st : postcard_state) :
     (file_id, string) result =
@@ -915,6 +913,9 @@ and path_elem_of_postcard (ctx : of_postcard_ctx) (st : postcard_state) :
      | 3 ->
          let* x_0 = string_of_postcard ctx st in
          Ok (PeTarget x_0)
+     | 4 ->
+         let* x_0 = builtin_path_elem_of_postcard ctx st in
+         Ok (PeBuiltin x_0)
      | _ -> Error ("unknown enum variant tag: " ^ string_of_int __tag))
 
 and place_of_postcard (ctx : of_postcard_ctx) (st : postcard_state) :
@@ -964,9 +965,10 @@ and projection_elem_of_postcard (ctx : of_postcard_ctx) (st : postcard_state) :
      match __tag with
      | 0 -> Ok Deref
      | 1 ->
-         let* x_0 = field_proj_kind_of_postcard ctx st in
-         let* x_1 = field_id_of_postcard ctx st in
-         Ok (Field (x_0, x_1))
+         let* x_0 = type_decl_id_of_postcard ctx st in
+         let* x_1 = option_of_postcard variant_id_of_postcard ctx st in
+         let* x_2 = field_id_of_postcard ctx st in
+         Ok (Field (x_0, x_1, x_2))
      | 2 -> Ok PtrMetadata
      | 3 ->
          let* offset = box_of_postcard operand_of_postcard ctx st in
@@ -1262,7 +1264,8 @@ and ty_kind_of_postcard (ctx : of_postcard_ctx) (st : postcard_state) :
      match __tag with
      | 0 ->
          let* x_0 = type_decl_ref_of_postcard ctx st in
-         Ok (TAdt x_0)
+         let* x_1 = option_of_postcard builtin_ty_of_postcard ctx st in
+         Ok (TAdt (x_0, x_1))
      | 1 ->
          let* x_0 = de_bruijn_var_of_postcard type_var_id_of_postcard ctx st in
          Ok (TVar x_0)
@@ -1319,23 +1322,9 @@ and type_decl_id_of_postcard (ctx : of_postcard_ctx) (st : postcard_state) :
 and type_decl_ref_of_postcard (ctx : of_postcard_ctx) (st : postcard_state) :
     (type_decl_ref, string) result =
   combine_error_msgs st __FUNCTION__
-    (let* id = type_id_of_postcard ctx st in
+    (let* id = type_decl_id_of_postcard ctx st in
      let* generics = box_of_postcard generic_args_of_postcard ctx st in
      Ok ({ id; generics } : type_decl_ref))
-
-and type_id_of_postcard (ctx : of_postcard_ctx) (st : postcard_state) :
-    (type_id, string) result =
-  combine_error_msgs st __FUNCTION__
-    (let* __tag = int_of_postcard ctx st in
-     match __tag with
-     | 0 ->
-         let* x_0 = type_decl_id_of_postcard ctx st in
-         Ok (TAdtId x_0)
-     | 1 -> Ok TTuple
-     | 2 ->
-         let* x_0 = builtin_ty_of_postcard ctx st in
-         Ok (TBuiltin x_0)
-     | _ -> Error ("unknown enum variant tag: " ^ string_of_int __tag))
 
 and type_param_of_postcard (ctx : of_postcard_ctx) (st : postcard_state) :
     (type_param, string) result =
@@ -3034,6 +3023,7 @@ and type_decl_of_postcard (ctx : of_postcard_ctx) (st : postcard_state) :
      let* item_meta = item_meta_of_postcard ctx st in
      let* generics = generic_params_of_postcard ctx st in
      let* src = item_source_of_postcard ctx st in
+     let* builtin = option_of_postcard builtin_ty_of_postcard ctx st in
      let* kind = type_decl_kind_of_postcard ctx st in
      let* layout =
        index_map_of_postcard string_of_postcard layout_of_postcard
@@ -3041,7 +3031,16 @@ and type_decl_of_postcard (ctx : of_postcard_ctx) (st : postcard_state) :
      in
      let* ptr_metadata = ptr_metadata_of_postcard ctx st in
      Ok
-       ({ def_id; item_meta; generics; src; kind; layout; ptr_metadata }
+       ({
+          def_id;
+          item_meta;
+          generics;
+          src;
+          builtin;
+          kind;
+          layout;
+          ptr_metadata;
+        }
          : type_decl))
 
 and type_decl_kind_of_postcard (ctx : of_postcard_ctx) (st : postcard_state) :

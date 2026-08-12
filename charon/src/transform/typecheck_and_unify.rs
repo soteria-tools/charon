@@ -93,7 +93,7 @@ impl TypeCheckVisitor<'_> {
     /// equality, we err on the side of accepting.
     fn match_tys(&mut self, a: &Ty, b: &Ty) -> Result<(), TypeError> {
         match (a.kind(), b.kind()) {
-            (TyKind::Adt(a), TyKind::Adt(b)) if a.id == b.id => {
+            (TyKind::Adt(a, _), TyKind::Adt(b, _)) if a.id == b.id => {
                 self.match_generics(&a.generics, &b.generics)?
             }
             (TyKind::Literal(a), TyKind::Literal(b)) if a == b => {}
@@ -202,8 +202,8 @@ impl TypeCheckVisitor<'_> {
                 assert_eq!(src_kind, tar_kind);
             }
             (
-                TyKind::Adt(TypeDeclRef { id: src_id, .. }),
-                TyKind::Adt(TypeDeclRef { id: tar_id, .. }),
+                TyKind::Adt(TypeDeclRef { id: src_id, .. }, _),
+                TyKind::Adt(TypeDeclRef { id: tar_id, .. }, _),
             ) => {
                 assert_eq!(src_id, tar_id);
             }
@@ -505,12 +505,7 @@ impl VisitAstMut for TypeCheckVisitor<'_> {
 
     // Check that generics match the parameters of the target item.
     fn enter_type_decl_ref(&mut self, x: &mut TypeDeclRef) {
-        match x.id {
-            TypeId::Adt(id) => self.assert_matches_item(id, &mut x.generics),
-            // TODO: check builtin generics.
-            TypeId::Tuple => {}
-            TypeId::Builtin(_) => {}
-        }
+        self.assert_matches_item(x.id, &mut x.generics)
     }
     fn enter_fun_decl_ref(&mut self, x: &mut FunDeclRef) {
         self.assert_matches_item(x.id, &mut x.generics);

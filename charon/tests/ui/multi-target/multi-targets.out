@@ -1,3 +1,8 @@
+struct (_, _)<A, B> {
+  A,
+  B,
+}
+
 pub struct test_crate::StructTargetIndep {
   x: u64,
   y: u64,

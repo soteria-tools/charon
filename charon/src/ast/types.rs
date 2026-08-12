@@ -716,6 +716,11 @@ pub struct TypeDecl {
     pub generics: GenericParams,
     /// The context of the type: distinguishes top-level items from closure-related items.
     pub src: ItemSource,
+    /// Set when Rust treats this type specially, i.e. when this declares a tuple, `str` or `Box`.
+    /// This information is also on each [`TyKind::Adt`] that refers to this declaration
+    #[drive(skip)]
+    #[serde_state(stateless)]
+    pub builtin: Option<BuiltinTy>,
     /// The type kind: enum, struct, or opaque.
     pub kind: TypeDeclKind,
     /// The layout of the type for each target. Information may be partial because of generics or
@@ -935,49 +940,10 @@ pub enum LifetimeMutability {
     Unknown,
 }
 
-/// Type identifier.
+/// Reference to a type declaration.
 ///
-/// Allows us to factorize the code for built-in types, adts and tuples
-#[derive(
-    Debug,
-    PartialEq,
-    Eq,
-    Clone,
-    Copy,
-    VariantName,
-    EnumAsGetters,
-    EnumIsA,
-    SerializeState,
-    DeserializeState,
-    Drive,
-    DriveMut,
-    DriveTwo,
-    Hash,
-    Ord,
-    PartialOrd,
-)]
-#[cfg_attr(feature = "charon_on_charon", charon::variants_prefix("T"))]
-pub enum TypeId {
-    /// A "regular" ADT type.
-    ///
-    /// Includes transparent ADTs and opaque ADTs (local ADTs marked as opaque,
-    /// and external ADTs).
-    #[cfg_attr(feature = "charon_on_charon", charon::rename("TAdtId"))]
-    Adt(TypeDeclId),
-    Tuple,
-    /// Built-in type. Either a primitive type like array or slice, or a
-    /// non-primitive type coming from a standard library
-    /// and that we handle like a primitive type. Types falling into this
-    /// category include: Box, Vec, Cell...
-    /// The Array and Slice types were initially modelled as primitive in
-    /// the [Ty] type. We decided to move them to built-in types as it allows
-    /// for more uniform treatment throughout the codebase.
-    #[cfg_attr(feature = "charon_on_charon", charon::rename("TBuiltin"))]
-    #[serde_state(stateless)]
-    Builtin(BuiltinTy),
-}
-
-/// Reference to a type declaration or builtin type.
+/// This includes user-defined ADTs (structs, enums, unions), but also tuples,
+/// boxes, and `str`, which we translate as `struct str([u8])`
 #[derive(
     Debug,
     Clone,
@@ -993,7 +959,7 @@ pub enum TypeId {
     DriveTwo,
 )]
 pub struct TypeDeclRef {
-    pub id: TypeId,
+    pub id: TypeDeclId,
     pub generics: BoxedArgs,
 }
 
@@ -1076,14 +1042,11 @@ pub enum TyKind {
     /// Note that here ADTs are very general. They can be:
     /// - user-defined ADTs
     /// - tuples (including `unit`, which is a 0-tuple)
-    /// - built-in types (includes some primitive types, e.g., arrays or slices)
-    ///
-    /// The information on the nature of the ADT is stored in (`TypeId`)[TypeId].
-    /// The last list is used encode const generics, e.g., the size of an array
+    /// - built-in types, namely `Box` and `str`
     ///
     /// Note: this is incorrectly named: this can refer to any valid `TypeDecl` including extern
     /// types.
-    Adt(TypeDeclRef),
+    Adt(TypeDeclRef, #[serde_state(stateless)] Option<BuiltinTy>),
     #[cfg_attr(feature = "charon_on_charon", charon::rename("TVar"))]
     TypeVar(TypeDbVar),
     Literal(LiteralTy),
@@ -1178,10 +1141,12 @@ pub enum TyKind {
 )]
 #[cfg_attr(feature = "charon_on_charon", charon::variants_prefix("T"))]
 pub enum BuiltinTy {
-    /// Boxes are de facto a primitive type.
+    /// Boxes are treated as primitives with `--treat-box-as-builtin`
     Box,
-    /// Primitive type
+    /// The `str` type, which corresponds to a `[u8]` with UTF-8 encoding.
     Str,
+    /// A tuple `(A, B, ...)`, including `unit`.
+    Tuple,
 }
 
 #[derive(

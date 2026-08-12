@@ -31,20 +31,17 @@ impl Transform {
                 ] => {
                     // The destination should be a variable
                     assert!(dest.is_local());
-                    let TyKind::Adt(tdecl_ref) = p.ty().kind() else {
-                        continue;
-                    };
-                    let TypeId::Adt(adt_id) = tdecl_ref.id else {
+                    let TyKind::Adt(tdecl_ref, _) = p.ty().kind() else {
                         continue;
                     };
 
                     // Lookup the type of the scrutinee
-                    let tkind = ctx.translated.type_decls.get(adt_id).map(|x| &x.kind);
+                    let tkind = ctx.translated.type_decls.get(tdecl_ref.id).map(|x| &x.kind);
                     let Some(TypeDeclKind::Enum(variants)) = tkind else {
                         match tkind {
                             // This can happen if the type was declared as invisible or opaque.
                             None | Some(TypeDeclKind::Opaque) => {
-                                let name = ctx.translated.item_name(adt_id);
+                                let name = ctx.translated.item_name(tdecl_ref.id);
                                 register_error!(
                                     ctx,
                                     block.span,
@@ -111,7 +108,8 @@ impl Transform {
                                                         ctx,
                                                         block.span,
                                                         "Found incorrect discriminant \
-                                                        {discr} for enum {adt_id}"
+                                                        {discr} for enum {}",
+                                                        tdecl_ref.id
                                                     );
                                                     None
                                                 })

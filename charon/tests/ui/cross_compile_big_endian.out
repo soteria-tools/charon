@@ -11,6 +11,13 @@ pub const MAX: usize = MAX()
 pub fn to_ne_bytes(_1: u128) -> [u8; 16usize]
 = <opaque>
 
+struct () {}
+
+struct (_, _)<A, B> {
+  A,
+  B,
+}
+
 // Full name: test_crate::S
 fn S() -> [u8; 16usize]
 {

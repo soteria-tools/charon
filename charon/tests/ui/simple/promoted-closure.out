@@ -12,6 +12,8 @@ pub trait Sized<Self>
     non-dyn-compatible
 }
 
+struct () {}
+
 // Full name: core::marker::Destruct
 #[lang_item(Destruct)]
 pub trait Destruct<Self>
@@ -63,6 +65,10 @@ pub trait Fn<Self, Args>
     proof ImpliedClause3: (Args: Tuple)
     fn call<'_0_1>;
     vtable: core::ops::function::Fn::{vtable}<Args, Self::ImpliedClause1::ImpliedClause1::Output>
+}
+
+struct (_,)<A> {
+  A,
 }
 
 // Full name: test_crate::foo::closure

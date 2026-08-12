@@ -37,6 +37,8 @@ impl "impl_Clone_for_i32" Clone for i32 {
 #[lang_item(VaList)]
 pub opaque type VaList<'a>
 
+struct () {}
+
 // Full name: core::ffi::va_list::VaList::{impl Destruct for VaList<'a>}::drop_glue
 unsafe fn drop_glue<'a, '_1>(_1: &'_1 mut VaList<'a>)
 where
@@ -98,6 +100,11 @@ where
     TraitClause1: (T: VaArgSafe),
     RegionOutlives0: 'f: '_1,
 = <opaque>
+
+struct (_, _)<A, B> {
+  A,
+  B,
+}
 
 // Full name: test_crate::sum
 pub unsafe extern "C" fn sum(...) -> i32

@@ -23,6 +23,8 @@ where
   Some(T),
 }
 
+struct () {}
+
 // Full name: test_crate::HasType
 trait HasType<Self, Self_Type>
 {

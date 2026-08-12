@@ -167,6 +167,8 @@ where
     return
 }
 
+struct () {}
+
 // Full name: test_crate::foo
 fn foo()
 {

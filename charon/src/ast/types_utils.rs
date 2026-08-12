@@ -692,7 +692,13 @@ impl Ty {
 
     /// Return the unit type
     pub fn mk_unit() -> Ty {
-        static_type!(Ty::mk_tuple(vec![]).kind().clone())
+        static_type!(TyKind::Adt(
+            TypeDeclRef {
+                id: TypeDeclId::UNIT,
+                generics: Box::new(GenericArgs::empty()),
+            },
+            Some(BuiltinTy::Tuple)
+        ))
     }
 
     pub fn mk_bool() -> Ty {
@@ -701,14 +707,6 @@ impl Ty {
 
     pub fn mk_usize() -> Ty {
         static_type!(TyKind::Literal(LiteralTy::UInt(UIntTy::Usize)))
-    }
-
-    pub fn mk_tuple(tys: Vec<Ty>) -> Ty {
-        TyKind::Adt(TypeDeclRef {
-            id: TypeId::Tuple,
-            generics: Box::new(GenericArgs::new_types(tys.into())),
-        })
-        .into_ty()
     }
 
     pub fn mk_array(ty: Ty, len: ConstantExpr) -> Ty {
@@ -720,10 +718,7 @@ impl Ty {
     }
     /// Return true if it is actually unit (i.e.: 0-tuple)
     pub fn is_unit(&self) -> bool {
-        match self.as_tuple() {
-            Some(tys) => tys.is_empty(),
-            None => false,
-        }
+        *self == Ty::mk_unit()
     }
 
     /// Return true if this is a scalar type
@@ -752,66 +747,47 @@ impl Ty {
     }
 
     pub fn is_str(&self) -> bool {
-        match self.kind() {
-            TyKind::Adt(ty_ref) if let TypeId::Builtin(BuiltinTy::Str) = ty_ref.id => true,
-            _ => false,
-        }
+        matches!(self.kind(), TyKind::Adt(_, Some(BuiltinTy::Str)))
     }
 
     /// Return true if the type is Box
     pub fn is_box(&self) -> bool {
-        match self.kind() {
-            TyKind::Adt(ty_ref) if let TypeId::Builtin(BuiltinTy::Box) = ty_ref.id => true,
-            _ => false,
-        }
+        matches!(self.kind(), TyKind::Adt(_, Some(BuiltinTy::Box)))
+    }
+
+    pub fn is_tuple(&self) -> bool {
+        matches!(self.kind(), TyKind::Adt(_, Some(BuiltinTy::Tuple)))
     }
 
     pub fn as_box(&self) -> Option<&Ty> {
         match self.kind() {
-            TyKind::Adt(ty_ref) if let TypeId::Builtin(BuiltinTy::Box) = ty_ref.id => {
-                Some(&ty_ref.generics.types[0])
-            }
+            TyKind::Adt(ty_ref, Some(BuiltinTy::Box)) => Some(&ty_ref.generics.types[0]),
             _ => None,
         }
     }
 
     pub fn as_adt_id(&self) -> Option<TypeDeclId> {
-        self.kind().as_adt().and_then(|a| a.id.as_adt().cloned())
+        self.kind().as_adt_ref().map(|a| a.id)
     }
 
     pub fn get_ptr_metadata(&self, translated: &TranslatedCrate) -> PtrMetadata {
         let ty_decls = &translated.type_decls;
         match self.kind() {
             TyKind::Pattern(ty, _) => ty.get_ptr_metadata(translated),
-            TyKind::Adt(ty_ref) => {
+            // Builtin types are no exception: their declaration records the same thing it does for
+            // any other ADT (`None` for `Box`, `Length` for `str`, the last field for a tuple).
+            TyKind::Adt(ty_ref, _) => {
                 // there are two cases:
                 // 1. if the declared type has a fixed metadata, just returns it
                 // 2. if it depends on some other types or the generic itself
-                match ty_ref.id {
-                    TypeId::Adt(type_decl_id) => {
-                        let Some(decl) = ty_decls.get(type_decl_id) else {
-                            return PtrMetadata::InheritFrom(self.clone());
-                        };
-                        match decl.ptr_metadata.clone().substitute(&ty_ref.generics) {
-                            // if it depends on some type, recursion with the binding env
-                            PtrMetadata::InheritFrom(ty) => ty.get_ptr_metadata(translated),
-                            // otherwise, simply return it
-                            meta => meta,
-                        }
-                    }
-                    // the metadata of a tuple is simply the last field
-                    TypeId::Tuple => {
-                        match ty_ref.generics.types.iter().last() {
-                            // `None` refers to the unit type `()`
-                            None => PtrMetadata::None,
-                            // Otherwise, simply recurse
-                            Some(ty) => ty.get_ptr_metadata(translated),
-                        }
-                    }
-                    // Box is a pointer like ref & raw ptr, hence no metadata
-                    TypeId::Builtin(BuiltinTy::Box) => PtrMetadata::None,
-                    // `str` has metadata length
-                    TypeId::Builtin(BuiltinTy::Str) => PtrMetadata::Length,
+                let Some(decl) = ty_decls.get(ty_ref.id) else {
+                    return PtrMetadata::InheritFrom(self.clone());
+                };
+                match decl.ptr_metadata.clone().substitute(&ty_ref.generics) {
+                    // if it depends on some type, recursion with the binding env
+                    PtrMetadata::InheritFrom(ty) => ty.get_ptr_metadata(translated),
+                    // otherwise, simply return it
+                    meta => meta,
                 }
             }
             TyKind::DynTrait(pred) => match pred.vtable_ref(translated) {
@@ -848,19 +824,44 @@ impl Ty {
         }
     }
 
-    pub fn as_tuple(&self) -> Option<&IndexVec<TypeVarId, Ty>> {
-        match self.kind() {
-            TyKind::Adt(ty_ref) if let TypeId::Tuple = ty_ref.id => Some(&ty_ref.generics.types),
-            _ => None,
+    /// The field types of a tuple, in order. This may apply substitutions, if
+    /// partial monomorphization has occurred. Returns `None` if the type is not a tuple.
+    pub fn as_tuple_fields(&self, translated: &TranslatedCrate) -> Vec<Ty> {
+        let Some((tref, Some(BuiltinTy::Tuple))) = self.as_adt() else {
+            unreachable!("as_tuple_fields called on non-tuple type {:?}", self);
+        };
+        if !tref.is_specialized(translated) {
+            // Polymorphic: the fields are in the generics
+            return tref.generics.types.as_vec().clone();
         }
-    }
-
-    pub fn as_adt(&self) -> Option<&TypeDeclRef> {
-        self.kind().as_adt()
+        let fields = &translated
+            .type_decls
+            .get(tref.id)
+            .unwrap()
+            .kind
+            .as_struct()
+            .unwrap();
+        if tref.generics.is_empty() {
+            // Monomorphized whole: the declaration's fields are already the concrete types.
+            return fields.iter().map(|f| f.ty.clone()).collect();
+        }
+        // Specialized for one instantiation but still generic: the arguments are the parameters
+        // that survived, so the declaration is the only place the fields are written down.
+        fields
+            .iter()
+            .map(|f| f.ty.clone().substitute(&tref.generics))
+            .collect()
     }
 }
 
 impl TyKind {
+    pub fn as_adt_ref(&self) -> Option<&TypeDeclRef> {
+        match self {
+            TyKind::Adt(tref, _) => Some(tref),
+            _ => None,
+        }
+    }
+
     pub fn into_ty(self) -> Ty {
         Ty::new(self)
     }
@@ -882,10 +883,20 @@ impl std::ops::Deref for Ty {
 }
 
 impl TypeDeclRef {
-    pub fn new(id: TypeId, generics: GenericArgs) -> Self {
+    pub fn new(id: TypeDeclId, generics: GenericArgs) -> Self {
         Self {
             id,
             generics: Box::new(generics),
+        }
+    }
+
+    /// Whether this refers to a declaration that monomorphization made for one instantiation of
+    /// another. Its arguments are then whatever parameters survived specialization. Relevant
+    /// for tuples, which have one declaration per arity.
+    pub fn is_specialized(&self, translated: &TranslatedCrate) -> bool {
+        match translated.item_names.get(&ItemId::Type(self.id)) {
+            Some(name) => name.name.iter().any(|elem| elem.is_instantiated()),
+            None => false,
         }
     }
 }
@@ -974,7 +985,7 @@ impl PtrMetadata {
             PtrMetadata::Length => Ty::mk_usize(),
             PtrMetadata::VTable(type_decl_ref) => Ty::new(TyKind::Ref(
                 Region::Static,
-                Ty::new(TyKind::Adt(type_decl_ref)),
+                Ty::new(TyKind::Adt(type_decl_ref, None)),
                 RefKind::Shared,
             )),
             PtrMetadata::InheritFrom(ty) => Ty::new(TyKind::PtrMetadata(ty)),

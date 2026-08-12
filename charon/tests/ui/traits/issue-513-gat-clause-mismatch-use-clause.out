@@ -31,6 +31,8 @@ pub trait Sized<Self>
     non-dyn-compatible
 }
 
+struct () {}
+
 // Full name: test_crate::HasAssoc
 trait HasAssoc<Self>
 {

@@ -4,6 +4,10 @@
 #[lang_item(FormatArguments)]
 pub opaque type Arguments<'a>
 
+struct str {
+  [u8],
+}
+
 // Full name: core::fmt::{Arguments<'a>}::from_str
 pub fn from_str<'a>(_1: &'static str) -> Arguments<'a>
 = <opaque>
@@ -11,6 +15,8 @@ pub fn from_str<'a>(_1: &'static str) -> Arguments<'a>
 // Full name: core::marker::MetaSized
 #[lang_item(MetaSized)]
 pub trait MetaSized<Self>
+
+struct () {}
 
 // Full name: core::marker::Destruct
 #[lang_item(Destruct)]
@@ -38,6 +44,11 @@ where
 // Full name: std::io::stdio::_print
 pub fn _print<'_0>(_1: Arguments<'_0>)
 = <opaque>
+
+struct (_, _)<A, B> {
+  A,
+  B,
+}
 
 // Full name: test_crate::Foo
 struct Foo {}

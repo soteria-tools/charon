@@ -71,6 +71,8 @@ pub trait Copy<Self>
     non-dyn-compatible
 }
 
+struct () {}
+
 // Full name: core::marker::Destruct
 #[lang_item(Destruct)]
 pub trait Destruct<Self>
@@ -121,6 +123,15 @@ where
 {
   Ok(T),
   Err(E),
+}
+
+struct (_,)<A> {
+  A,
+}
+
+struct (_, _)<A, B> {
+  A,
+  B,
 }
 
 // Full name: test_crate::foo

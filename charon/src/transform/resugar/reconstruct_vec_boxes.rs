@@ -85,22 +85,14 @@ fn assume_init_fn_ptr<'a>(ctx: &TransformCtx, call: &'a Call) -> Option<&'a FnPt
 }
 
 fn box_inner(ty: &Ty) -> Option<Ty> {
-    let TyKind::Adt(TypeDeclRef {
-        id: TypeId::Builtin(BuiltinTy::Box),
-        generics,
-    }) = ty.kind()
-    else {
+    let TyKind::Adt(TypeDeclRef { generics, .. }, Some(BuiltinTy::Box)) = ty.kind() else {
         return None;
     };
     Some(generics.types[TypeVarId::from_usize(0)].clone())
 }
 
 fn box_generics(ty: &Ty) -> Option<GenericArgs> {
-    let TyKind::Adt(TypeDeclRef {
-        id: TypeId::Builtin(BuiltinTy::Box),
-        generics,
-    }) = ty.kind()
-    else {
+    let TyKind::Adt(TypeDeclRef { generics, .. }, Some(BuiltinTy::Box)) = ty.kind() else {
         return None;
     };
     Some((**generics).clone())

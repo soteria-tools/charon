@@ -23,6 +23,8 @@ where
   Some(T),
 }
 
+struct () {}
+
 // Full name: test_crate::BoolTrait
 pub trait BoolTrait<Self>
 {

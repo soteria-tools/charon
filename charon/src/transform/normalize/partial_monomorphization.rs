@@ -197,11 +197,7 @@ impl<'pm, 'ctx> VisitAstMut for MutabilityShapeBuilder<'pm, 'ctx> {
         }
     }
     fn exit_ty_kind(&mut self, kind: &mut TyKind) {
-        if let TyKind::Adt(TypeDeclRef {
-            id: TypeId::Adt(id),
-            generics,
-        }) = kind
-        {
+        if let TyKind::Adt(TypeDeclRef { id, generics }, None) = kind {
             // Since the type was not replaced with a type var, it's an infected type. We've
             // traversed it so we have its final explicit arguments. Now we need to satisfy its
             // predicates. For that we add all its predicates to the new item, and pass those new
@@ -337,26 +333,19 @@ impl<'a> PartialMonomorphizer<'a> {
             | TyKind::Array(ty, _)
             | TyKind::Pattern(ty, _)
             | TyKind::Slice(ty) => self.is_infected(ty),
-            TyKind::Adt(tref) => match tref.id {
-                TypeId::Adt(id) => {
-                    let ty_infected = self.infected_types.contains(&id);
-                    let args_infected = if self.specialize_adts {
-                        // Since we make sure to only call the method on a processed type, any type
-                        // with infected arguments would have been replaced with a fresh instantiated
-                        // (and infected type). Hence we don't need to check the arguments here, only
-                        // the type id.
-                        false
-                    } else {
-                        tref.generics.types.iter().any(|ty| self.is_infected(ty))
-                    };
-                    ty_infected || args_infected
-                }
-                TypeId::Tuple | TypeId::Builtin(_) => {
-                    // Builtin types have no declaration to specialize, so infected arguments stay
-                    // visible inside them.
+            TyKind::Adt(tref, _) => {
+                let ty_infected = self.infected_types.contains(&tref.id);
+                let args_infected = if self.specialize_adts {
+                    // Since we make sure to only call the method on a processed type, any type
+                    // with infected arguments would have been replaced with a fresh instantiated
+                    // (and infected type). Hence we don't need to check the arguments here, only
+                    // the type id.
+                    false
+                } else {
                     tref.generics.types.iter().any(|ty| self.is_infected(ty))
-                }
-            },
+                };
+                ty_infected || args_infected
+            }
             // A function pointer/item by itself doesn't carry any mutable reference, even if it
             // uses some in its signature. Compare with closures: a closure without captures
             // doesn't trigger partial mono regardless of its signature.
@@ -499,8 +488,7 @@ impl VisitAstMut for PartialMonomorphizer<'_> {
 
     fn exit_type_decl_ref(&mut self, x: &mut TypeDeclRef) {
         if self.specialize_adts
-            && let TypeId::Adt(id) = x.id
-            && let Some(new_decl_ref) = self.process_generics(id.into(), &x.generics)
+            && let Some(new_decl_ref) = self.process_generics(x.id.into(), &x.generics)
         {
             *x = new_decl_ref.try_into().unwrap()
         }

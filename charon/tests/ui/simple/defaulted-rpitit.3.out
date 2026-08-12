@@ -47,6 +47,17 @@ pub trait Iterator<Self>
     vtable: core::iter::traits::iterator::Iterator::{vtable}<Self::Item>
 }
 
+struct () {}
+
+struct (_, _)<A, B> {
+  A,
+  B,
+}
+
+struct (_,)<A> {
+  A,
+}
+
 // Full name: test_crate::MyTrait
 pub trait MyTrait<Self, T>
 {

@@ -47,12 +47,12 @@ use derive_generic_visitor::*;
     drive(
         Assert, Attribute, AttrInfo, BinderKind, BinOp, BorrowckStatement, BorrowKind, BuiltinAssertKind, BuiltinFunId, BuiltinIndexOp, BuiltinTy,
         Call, CastKind, ClosureInfo, ClosureKind, ConstGenericParam, ConstGenericVarId,
-        Disambiguator, DynPredicate, Field, FieldId, FieldProjKind, File, FloatTy, FloatValue,
+        Disambiguator, DynPredicate, Field, FieldId, File, FloatTy, FloatValue,
         FnOperand, FunId, FnPtrKind, FunSig, InlineAttr, IntegerTy, IntTy, UIntTy, Literal, LiteralTy,
         llbc_ast::ExprBody, llbc_ast::StatementKind, llbc_ast::Switch,
         Loc, Locals, NullOp, Operand, PathElem, PlaceKind, ConstantExprKind,
         RawAttribute, RefKind, RegionId, RegionParam, ScalarValue, TraitItemName, TraitMethodId, AssocTypeId, AssocConstId, AssocItemId,
-        TranslatedCrate, TypeDeclKind, TypeId, TypeParam, TypePattern, TypeVarId,
+        TranslatedCrate, TypeDeclKind, TypeParam, TypePattern, TypeVarId,
         llbc_ast::BlockId, llbc_ast::StatementId,
         ullbc_ast::BlockData, ullbc_ast::BlockId, ullbc_ast::ExprBody, ullbc_ast::StatementKind,
         ullbc_ast::TerminatorKind, ullbc_ast::SwitchTargets,
@@ -172,9 +172,9 @@ impl<K: BodyVisitable + Hash + Eq, T: BodyVisitable> BodyVisitable for SeqHashMa
     visitor(drive_body_mut(&mut VisitBodyMut)),
     // Types that are ignored when encountered.
     skip(
-        AbortKind, BinOp, BorrowKind, BuiltinAssertKind, ConstantExpr, FieldId, FieldProjKind,
+        AbortKind, BinOp, BorrowKind, BuiltinAssertKind, ConstantExpr, FieldId,
         TypeDeclRef, FunDeclId, FunDeclRef, FnPtrKind, GenericArgs, GlobalDeclRef, IntegerTy, IntTy, UIntTy,
-        NullOp, RefKind, ScalarValue, Span, Ty, TypeDeclId, TypeId, UnOp, VariantId,
+        NullOp, RefKind, ScalarValue, Span, Ty, TypeDeclId, UnOp, VariantId,
         TraitRef, LiteralTy, Literal, Region, RegionId, (), String, PathBuf, bool,
     ),
     // Types that we unconditionally explore.
@@ -571,10 +571,7 @@ mod wrappers {
             x.drive(self.inner())
         }
         fn visit_type_decl_ref(&mut self, x: &TypeDeclRef) -> ControlFlow<Self::Break> {
-            match x.id {
-                TypeId::Adt(id) => self.0.visit_item_ref(ItemId::Type(id), &x.generics),
-                TypeId::Tuple | TypeId::Builtin(_) => self.visit_inner(x),
-            }
+            self.0.visit_item_ref(ItemId::Type(x.id), &x.generics)
         }
         fn visit_fun_decl_ref(&mut self, x: &FunDeclRef) -> ControlFlow<Self::Break> {
             self.0.visit_item_ref(ItemId::Fun(x.id), &x.generics)
@@ -605,10 +602,7 @@ mod wrappers {
             x.drive_mut(self.inner())
         }
         fn visit_type_decl_ref(&mut self, x: &mut TypeDeclRef) -> ControlFlow<Self::Break> {
-            match x.id {
-                TypeId::Adt(id) => self.0.visit_item_ref(ItemId::Type(id), &mut x.generics),
-                TypeId::Tuple | TypeId::Builtin(_) => self.visit_inner(x),
-            }
+            self.0.visit_item_ref(ItemId::Type(x.id), &mut x.generics)
         }
         fn visit_fun_decl_ref(&mut self, x: &mut FunDeclRef) -> ControlFlow<Self::Break> {
             self.0.visit_item_ref(ItemId::Fun(x.id), &mut x.generics)

@@ -3,6 +3,8 @@
 // Full name: core::alloc::AllocError
 pub struct AllocError {}
 
+struct () {}
+
 // Full name: core::result::Result
 #[diagnostic_item("Result")]
 pub enum Result<T, E>
@@ -178,6 +180,10 @@ where
     storage_dead(_2)
     storage_dead(self)
     return
+}
+
+struct str {
+  [u8],
 }
 
 fn core::ptr::write_bytes::precondition_check(addr: *const (), align: usize, zero_size: bool)
@@ -2136,6 +2142,10 @@ where
     return
 }
 
+struct (_,)<A> {
+  A,
+}
+
 #[diagnostic_item("ptr_const_is_null")]
 pub fn core::ptr::const_ptr::{*const T}::is_null<T>(self: *const T) -> bool
 {
@@ -2860,6 +2870,11 @@ where
     storage_dead(_8)
     storage_dead(b_1)
     return
+}
+
+struct (_, _)<A, B> {
+  A,
+  B,
 }
 
 // Full name: alloc::boxed::{Box<T, A>[TraitClause0, TraitClause1, TraitClause2]}::into_raw_with_allocator

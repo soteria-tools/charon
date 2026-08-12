@@ -783,9 +783,7 @@ impl<'a> IdRefMapperVisitor<'a> {
 
 impl VisitAstMut for IdRefMapperVisitor<'_> {
     fn enter_type_decl_ref(&mut self, x: &mut TypeDeclRef) {
-        if let TypeId::Adt(id) = &mut x.id {
-            self.map(id);
-        }
+        self.map(&mut x.id);
     }
     fn enter_fun_decl_ref(&mut self, x: &mut FunDeclRef) {
         self.map(&mut x.id);
@@ -801,9 +799,7 @@ impl VisitAstMut for IdRefMapperVisitor<'_> {
     }
 
     fn enter_projection_elem(&mut self, x: &mut ProjectionElem) {
-        if let ProjectionElem::Field(proj, _) = x
-            && let FieldProjKind::Adt(id, _) = proj
-        {
+        if let ProjectionElem::Field(id, _, _) = x {
             self.map(id);
         }
     }

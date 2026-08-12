@@ -23,6 +23,13 @@ where
   Some(T),
 }
 
+struct () {}
+
+struct (_, _)<A, B> {
+  A,
+  B,
+}
+
 // Full name: test_crate::Foo
 trait Foo<'a, Self, T, Self_X, Self_Item>
 where

@@ -13,6 +13,8 @@ pub fn MAX() -> char
 // Full name: core::char::MAX
 pub const MAX: char = MAX()
 
+struct () {}
+
 // Full name: test_crate::main
 fn main()
 {

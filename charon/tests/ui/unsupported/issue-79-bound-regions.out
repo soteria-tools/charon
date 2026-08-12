@@ -48,6 +48,17 @@ where
     TypeOutlives0: T: '_0,
 = <opaque>
 
+struct () {}
+
+struct (_, _)<A, B> {
+  A,
+  B,
+}
+
+struct (_,)<A> {
+  A,
+}
+
 // Full name: test_crate::main
 fn main()
 {

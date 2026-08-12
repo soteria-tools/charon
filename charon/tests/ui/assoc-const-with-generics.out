@@ -12,6 +12,13 @@ pub trait Sized<Self>
     non-dyn-compatible
 }
 
+struct () {}
+
+struct (_, _)<A, B> {
+  A,
+  B,
+}
+
 // Full name: test_crate::V
 struct V<T, const N : usize>
 where

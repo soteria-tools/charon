@@ -427,7 +427,7 @@ impl<'tcx> ItemTransCtx<'tcx, '_> {
                     let vtbl_struct = self.erase_region_binder(vtbl_struct);
                     let ty = Ty::new(TyKind::Ref(
                         Region::Static,
-                        Ty::new(TyKind::Adt(vtbl_struct)),
+                        Ty::new(TyKind::Adt(vtbl_struct, None)),
                         RefKind::Shared,
                     ));
                     let name = format!("super_trait_{}", supertrait_counter.next().unwrap());
@@ -597,6 +597,7 @@ impl<'tcx> ItemTransCtx<'tcx, '_> {
             def_id: type_id,
             item_meta,
             generics,
+            builtin: None,
             src: ItemSource::VTableTy {
                 dyn_predicate,
                 field_map,
@@ -633,7 +634,7 @@ impl<'tcx> ItemTransCtx<'tcx, '_> {
                 ctx.translate_vtable_struct_ref(span, tref)
             })?;
             let vtbl_ty = self.erase_region_binder(vtbl_ty);
-            TyKind::Adt(vtbl_ty).into_ty()
+            TyKind::Adt(vtbl_ty, None).into_ty()
         };
         let ty = TyKind::Ref(Region::Static, vtbl_ty.clone(), RefKind::Shared).into_ty();
 
@@ -763,7 +764,7 @@ impl<'tcx> ItemTransCtx<'tcx, '_> {
             impl_def.this(),
             TransItemSourceKind::VTableInstanceInitializer(*impl_kind),
         );
-        let ty = Ty::new(TyKind::Adt(vtable_struct_ref));
+        let ty = Ty::new(TyKind::Adt(vtable_struct_ref, None));
         let value = ConstantExpr {
             kind: ConstantExprKind::Call(
                 FnPtr::new(
@@ -901,15 +902,15 @@ impl<'tcx> ItemTransCtx<'tcx, '_> {
         let self_ty = &implemented_trait.generics.types[0];
 
         let mut builder = BodyBuilder::new(span, 0);
-        let ret_ty = Ty::new(TyKind::Adt(vtable_struct_ref.clone()));
+        let ret_ty = Ty::new(TyKind::Adt(vtable_struct_ref.clone(), None));
         let ret_place = builder.new_var(Some("ret".into()), ret_ty.clone());
 
         let vtable_data = self.prepare_vtable_fields(&poly_trait_def, trait_id, implied_preds)?;
         // Retrieve the expected field types from the struct definition. This avoids complicated
         // substitutions.
         let field_tys = {
-            let vtable_decl_id = *vtable_struct_ref.id.as_adt().unwrap();
-            let ItemRef::Type(vtable_def) = self.t_ctx.get_or_translate(vtable_decl_id.into())?
+            let ItemRef::Type(vtable_def) =
+                self.t_ctx.get_or_translate(vtable_struct_ref.id.into())?
             else {
                 unreachable!()
             };
@@ -1102,7 +1103,7 @@ impl<'tcx> ItemTransCtx<'tcx, '_> {
             abi: Abi::rust(),
             is_variadic: false,
             inputs: vec![],
-            output: Ty::new(TyKind::Adt(vtable_struct_ref.clone())),
+            output: Ty::new(TyKind::Adt(vtable_struct_ref.clone(), None)),
         };
 
         let body = match impl_kind {

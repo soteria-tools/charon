@@ -14,6 +14,8 @@ pub trait Sized<Self>
     non-dyn-compatible
 }
 
+struct () {}
+
 // Full name: core::marker::Destruct
 #[lang_item(Destruct)]
 pub trait Destruct<Self>
@@ -50,6 +52,15 @@ pub trait FnOnce<Self, Args>
     vtable: core::ops::function::FnOnce::{vtable}
 }
 
+struct (_,)::<u8> {
+  u8,
+}
+
+struct (_, _)::<u8, bool> {
+  u8,
+  bool,
+}
+
 // Full name: test_crate::main::closure
 struct closure {
   NotCopy,
@@ -67,11 +78,11 @@ unsafe fn drop_glue<'_0>(_1: &'_0 mut closure)
     return
 }
 
-// Full name: test_crate::main::{impl FnOnce<(u8,)> for closure}
-impl "impl_FnOnce_tuple_for_closure" FnOnce<(u8,)> for closure {
+// Full name: test_crate::main::{impl FnOnce<(_,)::<u8>> for closure}
+impl "impl_FnOnce_for_closure" FnOnce<(_,)::<u8>> for closure {
     proof ImpliedClause0: (closure: MetaSized) = {built_in impl MetaSized for closure}
-    proof ImpliedClause1: ((u8,): Sized) = {built_in impl Sized for (u8,)}
-    proof ImpliedClause2: ((u8,): Tuple) = {built_in impl Tuple for (u8,)}
+    proof ImpliedClause1: ((_,)::<u8>: Sized) = {built_in impl Sized for (_,)::<u8>}
+    proof ImpliedClause2: ((_,)::<u8>: Tuple) = {built_in impl Tuple for (_,)::<u8>}
     non-dyn-compatible
 }
 
@@ -81,14 +92,14 @@ fn apply_to_zero_once::<closure>(f: closure) -> u8
     let _0: u8; // return
     let f: closure; // arg #1
     let _2: closure; // anonymous local
-    let _3: (u8,); // anonymous local
+    let _3: (_,)::<u8>; // anonymous local
 
     storage_live(_0)
     storage_live(_2)
     _2 = move f
     storage_live(_3)
     _3 = (const 0u8,)
-    _0 = impl_FnOnce_tuple_for_closure::call_once(move _2, move _3)
+    _0 = impl_FnOnce_for_closure::call_once(move _2, move _3)
     ↳⚡ conditional_drop[drop_glue<'0>] _2
         ↳⚡ storage_dead(f)
             unwind_terminate
@@ -137,12 +148,12 @@ impl "impl_Destruct_for_closure" Destruct for closure {
     non-dyn-compatible
 }
 
-// Full name: test_crate::main::{impl FnOnce<(u8,)> for closure}::call_once
-fn call_once(_1: closure, tupled_args: (u8,)) -> u8
+// Full name: test_crate::main::{impl FnOnce<(_,)::<u8>> for closure}::call_once
+fn call_once(_1: closure, tupled_args: (_,)::<u8>) -> u8
 {
     let _0: u8; // return
     let _1: closure; // arg #1
-    let tupled_args: (u8,); // arg #2
+    let tupled_args: (_,)::<u8>; // arg #2
     let x: u8; // local
     let _4: (); // anonymous local
     let _5: NotCopy; // anonymous local

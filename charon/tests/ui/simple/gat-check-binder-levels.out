@@ -23,6 +23,11 @@ where
   Some(T),
 }
 
+struct (_, _)<A, B> {
+  A,
+  B,
+}
+
 // Full name: test_crate::Link
 pub trait Link<Self, T>
 {

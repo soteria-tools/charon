@@ -122,12 +122,7 @@ fn trait_impl_short_name(
             TyKind::Literal(literal) => literal.to_string(),
             TyKind::Slice(..) => "slice".to_owned(),
             TyKind::Array(..) => "array".to_owned(),
-            TyKind::Adt(tref) => match tref.id {
-                TypeId::Adt(id) => item_to_ident(item_names, ItemId::Type(id))?,
-                TypeId::Builtin(builtin) => builtin.get_name().short_str()?.to_owned(),
-                TypeId::Tuple if tref.generics.types.is_empty() => "unit".to_owned(),
-                TypeId::Tuple => "tuple".to_owned(),
-            },
+            TyKind::Adt(tref, _) => item_to_ident(item_names, ItemId::Type(tref.id))?,
             _ => return None,
         })
     }
@@ -149,7 +144,7 @@ fn trait_impl_short_name(
     } else {
         ty_to_idents(item_names, self_ty)?
     });
-    if let TyKind::Adt(tref) = self_ty.kind() {
+    if let TyKind::Adt(tref, _) = self_ty.kind() {
         candidate.extend(args_to_idents(item_names, &tref.generics));
     };
     Some(candidate.join("_"))

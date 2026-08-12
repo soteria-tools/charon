@@ -165,11 +165,13 @@ impl<'tcx, 'ctx> ItemTransCtx<'tcx, 'ctx> {
 
             hax::TyKind::Adt(item) => {
                 let tref = self.translate_type_decl_ref(span, item)?;
-                TyKind::Adt(tref)
+                let builtin = self.recognize_builtin_type(item);
+                TyKind::Adt(tref, builtin)
             }
-            hax::TyKind::Str => {
-                let tref = TypeDeclRef::new(TypeId::Builtin(BuiltinTy::Str), GenericArgs::empty());
-                TyKind::Adt(tref)
+            hax::TyKind::Str(item_ref) => {
+                let tref: TypeDeclRef =
+                    self.translate_item(span, item_ref, TransItemSourceKind::Type)?;
+                TyKind::Adt(tref, Some(BuiltinTy::Str))
             }
             hax::TyKind::Array(item_ref) => {
                 let mut args = self.translate_generic_args(span, &item_ref.generic_args, &[])?;
@@ -190,9 +192,14 @@ impl<'tcx, 'ctx> ItemTransCtx<'tcx, 'ctx> {
                 TyKind::Slice(args.types.pop().unwrap())
             }
             hax::TyKind::Tuple(item_ref) => {
-                let args = self.translate_generic_args(span, &item_ref.generic_args, &[])?;
-                let tref = TypeDeclRef::new(TypeId::Tuple, args);
-                TyKind::Adt(tref)
+                let mut tref: TypeDeclRef =
+                    self.translate_item(span, item_ref, TransItemSourceKind::Type)?;
+                // hax gives the tuple item a `Sized` bound for each field but the last, that
+                // being Rust's rule for tuples. `translate_adt_def` drops those clauses from
+                // the declaration, so we drop the trait refs that answer them here too: a
+                // reference has to supply exactly the clauses its declaration asks for.
+                tref.generics.trait_refs.clear();
+                TyKind::Adt(tref, Some(BuiltinTy::Tuple))
             }
             hax::TyKind::Ref(region, ty, mutability) => {
                 trace!("Ref");
@@ -233,7 +240,8 @@ impl<'tcx, 'ctx> ItemTransCtx<'tcx, 'ctx> {
 
             hax::TyKind::Foreign(item) => {
                 let tref = self.translate_type_decl_ref(span, item)?;
-                TyKind::Adt(tref)
+                let builtin = self.recognize_builtin_type(item);
+                TyKind::Adt(tref, builtin)
             }
 
             hax::TyKind::Arrow(sig) => {
@@ -248,7 +256,7 @@ impl<'tcx, 'ctx> ItemTransCtx<'tcx, 'ctx> {
             }
             hax::TyKind::Closure(args) => {
                 let tref = self.translate_closure_type_ref(span, args)?;
-                TyKind::Adt(tref)
+                TyKind::Adt(tref, None)
             }
 
             hax::TyKind::Dynamic(dyn_binder, region) => {
@@ -413,19 +421,20 @@ impl<'tcx, 'ctx> ItemTransCtx<'tcx, 'ctx> {
         })
     }
 
-    /// Checks whether the given id corresponds to a built-in type.
-    pub(crate) fn recognize_builtin_type(
-        &mut self,
-        item: &hax::ItemRef,
-    ) -> Result<Option<BuiltinTy>, Error> {
-        let def = self.hax_def(item)?;
-        let ty = if def.lang_item == Some(sym::owned_box) && self.t_ctx.options.treat_box_as_builtin
-        {
-            Some(BuiltinTy::Box)
-        } else {
-            None
-        };
-        Ok(ty)
+    /// Whether Rust treats this type specially, i.e. whether it is a tuple, `str` or `Box`.
+    pub(crate) fn recognize_builtin_type(&mut self, item: &hax::ItemRef) -> Option<BuiltinTy> {
+        item.def_id
+            .as_synthetic(self.hax_state())
+            .and_then(|synthetic| match synthetic {
+                hax::SyntheticItem::Tuple(_) => Some(BuiltinTy::Tuple),
+                hax::SyntheticItem::Str => Some(BuiltinTy::Str),
+                hax::SyntheticItem::Array | hax::SyntheticItem::Slice => None,
+            })
+            .or_else(|| {
+                (self.t_ctx.options.treat_box_as_builtin
+                    && self.hax_def(item).ok()?.lang_item == Some(sym::owned_box))
+                .then_some(BuiltinTy::Box)
+            })
     }
 
     /// Translate a Dynamically Sized Type metadata kind.
@@ -783,6 +792,38 @@ impl<'tcx, 'ctx> ItemTransCtx<'tcx, 'ctx> {
 
         if item_meta.opacity.is_opaque() {
             return Ok(TypeDeclKind::Opaque);
+        }
+
+        // hax's synthetic ADTs have no variants; we must construct the fields ourselves
+        let synthetic_fields = match adt_kind {
+            AdtKind::Tuple => {
+                let item = def.this();
+                let args = self.translate_generic_args(def_span, &item.generic_args, &[])?;
+                Some(args.types.into_iter().collect_vec())
+            }
+            AdtKind::Str => {
+                let u8_ty = TyKind::Literal(LiteralTy::UInt(UIntTy::U8)).into_ty();
+                Some(vec![Ty::mk_slice(u8_ty)])
+            }
+            _ => None,
+        };
+        if let Some(tys) = synthetic_fields {
+            // hax gives these items `Sized` bounds so that rustc's queries work on them.
+            // We ignore them in our output, for now.
+            self.innermost_generics_mut().trait_clauses.clear();
+            let fields = tys
+                .into_iter()
+                .map(|ty| Field {
+                    span: def_span,
+                    attr_info: AttrInfo {
+                        public: true,
+                        ..AttrInfo::default()
+                    },
+                    name: None,
+                    ty,
+                })
+                .collect();
+            return Ok(TypeDeclKind::Struct(fields));
         }
 
         trace!("{}", trans_id);

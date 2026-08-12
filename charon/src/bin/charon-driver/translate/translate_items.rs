@@ -455,10 +455,12 @@ impl<'tcx> ItemTransCtx<'tcx, '_> {
             .map(|l| (self.get_target_triple(), l))
             .collect();
         let ptr_metadata = self.translate_ptr_metadata(span, def.this())?;
+        let builtin = self.recognize_builtin_type(def.this());
         let type_def = TypeDecl {
             def_id: trans_id,
             item_meta,
             generics: self.into_generics(),
+            builtin,
             kind,
             src,
             layout,

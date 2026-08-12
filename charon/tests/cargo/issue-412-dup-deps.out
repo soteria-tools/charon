@@ -34,6 +34,13 @@ pub enum AssertKind {
   Match,
 }
 
+struct () {}
+
+struct (_, _)<A, B> {
+  A,
+  B,
+}
+
 pub fn mydup::hello() -> u32
 {
     let _0: u32; // return
@@ -58,28 +65,28 @@ fn main()
     let _0: (); // return
     let a: u32; // local
     let b: u32; // local
-    let _3: (&'3 u32, &'4 u32); // anonymous local
-    let _4: &'5 u32; // anonymous local
+    let _3: (&'7 u32, &'8 u32); // anonymous local
+    let _4: &'9 u32; // anonymous local
     let _5: u32; // anonymous local
     let _6: u32; // anonymous local
     let _7: u32; // anonymous local
     let _8: (u32, bool); // anonymous local
-    let _9: &'6 u32; // anonymous local
-    let left_val: &'7 u32; // local
-    let right_val: &'8 u32; // local
+    let _9: &'10 u32; // anonymous local
+    let left_val: &'11 u32; // local
+    let right_val: &'12 u32; // local
     let _12: bool; // anonymous local
     let _13: u32; // anonymous local
     let _14: u32; // anonymous local
     let kind: AssertKind; // local
     let _16: AssertKind; // anonymous local
-    let _17: &'9 u32; // anonymous local
-    let _18: &'10 u32; // anonymous local
-    let _19: &'11 u32; // anonymous local
-    let _20: &'12 u32; // anonymous local
-    let _21: Option<Arguments<'19>>[{built_in impl Sized for Arguments<'19>}]; // anonymous local
-    let _22: &'22 u32; // anonymous local
-    let _23: &'23 u32; // anonymous local
-    let _24: &'31 u32; // anonymous local
+    let _17: &'13 u32; // anonymous local
+    let _18: &'14 u32; // anonymous local
+    let _19: &'15 u32; // anonymous local
+    let _20: &'16 u32; // anonymous local
+    let _21: Option<Arguments<'23>>[{built_in impl Sized for Arguments<'23>}]; // anonymous local
+    let _22: &'26 u32; // anonymous local
+    let _23: &'27 u32; // anonymous local
+    let _24: &'37 u32; // anonymous local
     let _25: u32; // anonymous local
 
     storage_live(_0)

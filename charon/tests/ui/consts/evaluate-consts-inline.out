@@ -1,5 +1,10 @@
 # Final LLBC before serialization:
 
+struct (_, _)<A, B> {
+  A,
+  B,
+}
+
 // Full name: test_crate::promoted_scalar
 pub fn promoted_scalar() -> &'static i32
 {

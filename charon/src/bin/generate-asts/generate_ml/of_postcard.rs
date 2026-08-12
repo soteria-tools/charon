@@ -67,10 +67,13 @@ const MANUAL_IMPLS: &[(&str, &str)] = &[
 
 impl<'a> GenerateCtx<'a> {
     fn build_postcard_function(&self, decl: &TypeDecl, body: &str) -> String {
-        let ty = TyKind::Adt(TypeDeclRef {
-            id: TypeId::Adt(decl.def_id),
-            generics: decl.generics.identity_args().into(),
-        })
+        let ty = TyKind::Adt(
+            TypeDeclRef {
+                id: decl.def_id,
+                generics: decl.generics.identity_args().into(),
+            },
+            decl.builtin,
+        )
         .into_ty();
         let (ty_name, _) = self.type_to_ocaml_ident_raw(decl);
         let ty = self.type_to_ocaml_name(&ty);
@@ -135,14 +138,15 @@ impl<'a> GenerateCtx<'a> {
             },
             TyKind::Literal(LiteralTy::Float(FloatTy::F32)) => "f32_of_postcard".to_string(),
             TyKind::Literal(LiteralTy::Float(_)) => "float_of_postcard".to_string(),
-            TyKind::Adt(tref) => {
+            TyKind::Adt(tref, builtin) => {
                 let mut expr = Vec::new();
                 for ty in &tref.generics.types {
                     expr.push(self.type_to_ocaml_postcard_call(ty))
                 }
                 let mut wrap_in_map = false;
-                match tref.id {
-                    TypeId::Adt(id) => {
+                match builtin {
+                    None => {
+                        let id = tref.id;
                         let mut first = if let Some(tdecl) = self.crate_data.type_decls.get(id) {
                             let (name, module) = self.type_to_ocaml_ident_raw(tdecl);
                             match module {
@@ -171,8 +175,8 @@ impl<'a> GenerateCtx<'a> {
 
                         expr.insert(0, first + "_of_postcard");
                     }
-                    TypeId::Builtin(BuiltinTy::Box) => expr.insert(0, "box_of_postcard".to_owned()),
-                    TypeId::Tuple => {
+                    Some(BuiltinTy::Box) => expr.insert(0, "box_of_postcard".to_owned()),
+                    Some(BuiltinTy::Tuple) => {
                         let name = match tref.generics.types.len() {
                             2 => "pair_of_postcard".to_string(),
                             3 => "triple_of_postcard".to_string(),

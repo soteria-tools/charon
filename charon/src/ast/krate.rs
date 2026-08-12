@@ -16,6 +16,11 @@ use macros::{EnumAsGetters, EnumIsA, VariantIndexArity, VariantName};
 
 generate_index_type!(FunDeclId, "Fun");
 generate_index_type!(TypeDeclId, "Adt");
+
+impl TypeDeclId {
+    /// The declaration of the unit type `()`
+    pub const UNIT: Self = Self::ZERO;
+}
 generate_index_type!(GlobalDeclId, "Global");
 generate_index_type!(TraitDeclId, "TraitDecl");
 generate_index_type!(TraitImplId, "TraitImpl");
@@ -107,12 +112,6 @@ wrap_unwrap_enum!(ItemId::Global(GlobalDeclId));
 wrap_unwrap_enum!(ItemId::Type(TypeDeclId));
 wrap_unwrap_enum!(ItemId::TraitDecl(TraitDeclId));
 wrap_unwrap_enum!(ItemId::TraitImpl(TraitImplId));
-impl TryFrom<ItemId> for TypeId {
-    type Error = ();
-    fn try_from(x: ItemId) -> Result<Self, Self::Error> {
-        Ok(TypeId::Adt(x.try_into()?))
-    }
-}
 impl TryFrom<ItemId> for FunId {
     type Error = ();
     fn try_from(x: ItemId) -> Result<Self, Self::Error> {

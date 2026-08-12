@@ -105,7 +105,7 @@ fn transform_constant_expr(
                 .collect();
 
             // Build an `Aggregate` rvalue.
-            let tref = val.ty.kind().as_adt().unwrap();
+            let tref = val.ty.kind().as_adt_ref().unwrap();
             let aggregate_kind = AggregateKind::Adt(tref.clone(), variant, None);
             Rvalue::Aggregate(aggregate_kind, fields)
         }

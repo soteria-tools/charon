@@ -17,6 +17,16 @@ fn translate(code: impl std::fmt::Display) -> anyhow::Result<TranslatedCrate> {
     util::translate_rust_text(code, &[])
 }
 
+/// The type declarations written by the user, in order. Every crate also declares the types Rust
+/// treats specially -- tuples, starting with `()` -- which these tests aren't about.
+fn user_type_decls(crate_data: &TranslatedCrate) -> Vec<&TypeDecl> {
+    crate_data
+        .type_decls
+        .iter()
+        .filter(|decl| decl.builtin.is_none())
+        .collect()
+}
+
 /// A general item, with information shared by all items.
 struct Item<'c> {
     name_str: String,
@@ -55,7 +65,7 @@ fn type_decl() -> anyhow::Result<()> {
         ",
     )?;
     assert_eq!(
-        repr_name(&crate_data, &crate_data.type_decls[0].item_meta.name),
+        repr_name(&crate_data, &user_type_decls(&crate_data)[0].item_meta.name),
         "test_crate::Struct"
     );
     Ok(())
@@ -146,14 +156,14 @@ fn file_name() -> anyhow::Result<()> {
         ",
     )?;
     assert_eq!(
-        repr_name(&crate_data, &crate_data.type_decls[0].item_meta.name),
+        repr_name(&crate_data, &user_type_decls(&crate_data)[0].item_meta.name),
         "test_crate::Foo"
     );
     assert_eq!(
-        repr_name(&crate_data, &crate_data.type_decls[1].item_meta.name),
+        repr_name(&crate_data, &user_type_decls(&crate_data)[1].item_meta.name),
         "core::option::Option"
     );
-    let file_id = crate_data.type_decls[1].item_meta.span.data.file_id;
+    let file_id = user_type_decls(&crate_data)[1].item_meta.span.data.file_id;
     let file = &crate_data.files[file_id];
     assert_eq!(file.name.to_string(), "/rustc/library/core/src/option.rs");
     Ok(())
@@ -381,10 +391,10 @@ fn attributes() -> anyhow::Result<()> {
         "#,
     )?;
     assert_eq!(
-        unknown_attrs(&crate_data.type_decls[0].item_meta),
+        unknown_attrs(&user_type_decls(&crate_data)[0].item_meta),
         vec!["clippy::foo", "clippy::foo(arg)", "clippy::foo(\"arg\")"]
     );
-    assert!(unknown_attrs(&crate_data.type_decls[1].item_meta).is_empty());
+    assert!(unknown_attrs(&user_type_decls(&crate_data)[1].item_meta).is_empty());
     assert_eq!(
         unknown_attrs(&crate_data.trait_decls[0].item_meta),
         vec!["clippy::foo"]
@@ -532,22 +542,22 @@ fn visibility() -> anyhow::Result<()> {
         "#,
     )?;
     assert_eq!(
-        repr_name(&crate_data, &crate_data.type_decls[0].item_meta.name),
+        repr_name(&crate_data, &user_type_decls(&crate_data)[0].item_meta.name),
         "test_crate::Pub"
     );
-    assert!(crate_data.type_decls[0].item_meta.attr_info.public);
+    assert!(user_type_decls(&crate_data)[0].item_meta.attr_info.public);
     assert_eq!(
-        repr_name(&crate_data, &crate_data.type_decls[1].item_meta.name),
+        repr_name(&crate_data, &user_type_decls(&crate_data)[1].item_meta.name),
         "test_crate::Priv"
     );
-    assert!(!crate_data.type_decls[1].item_meta.attr_info.public);
+    assert!(!user_type_decls(&crate_data)[1].item_meta.attr_info.public);
     // Note how we think `PubInPriv` is public. It kind of is but there is no path to it. This is
     // probably fine.
     assert_eq!(
-        repr_name(&crate_data, &crate_data.type_decls[2].item_meta.name),
+        repr_name(&crate_data, &user_type_decls(&crate_data)[2].item_meta.name),
         "test_crate::private::PubInPriv"
     );
-    assert!(crate_data.type_decls[2].item_meta.attr_info.public);
+    assert!(user_type_decls(&crate_data)[2].item_meta.attr_info.public);
     Ok(())
 }
 
@@ -575,14 +585,14 @@ fn discriminants() -> anyhow::Result<()> {
             .collect()
     }
     assert_eq!(
-        get_enum_discriminants(&crate_data.type_decls[0]),
+        get_enum_discriminants(user_type_decls(&crate_data)[0]),
         vec![
             Literal::Scalar(ScalarValue::Signed(IntTy::Isize, 0)),
             Literal::Scalar(ScalarValue::Signed(IntTy::Isize, 1))
         ]
     );
     assert_eq!(
-        get_enum_discriminants(&crate_data.type_decls[1]),
+        get_enum_discriminants(user_type_decls(&crate_data)[1]),
         vec![
             Literal::Scalar(ScalarValue::Unsigned(UIntTy::U32, 3)),
             Literal::Scalar(ScalarValue::Unsigned(UIntTy::U32, 42))
@@ -713,7 +723,7 @@ fn rename_attribute() -> anyhow::Result<()> {
     );
 
     assert_eq!(
-        crate_data.type_decls[0]
+        user_type_decls(&crate_data)[0]
             .item_meta
             .attr_info
             .rename
@@ -722,7 +732,7 @@ fn rename_attribute() -> anyhow::Result<()> {
     );
 
     assert_eq!(
-        crate_data.type_decls[1]
+        user_type_decls(&crate_data)[1]
             .item_meta
             .attr_info
             .rename
@@ -731,16 +741,16 @@ fn rename_attribute() -> anyhow::Result<()> {
     );
 
     assert_eq!(
-        crate_data.type_decls[1].kind.as_enum().unwrap()[0].renamed_name(),
+        user_type_decls(&crate_data)[1].kind.as_enum().unwrap()[0].renamed_name(),
         "Variant1"
     );
     assert_eq!(
-        crate_data.type_decls[1].kind.as_enum().unwrap()[1].renamed_name(),
+        user_type_decls(&crate_data)[1].kind.as_enum().unwrap()[1].renamed_name(),
         "SimpleSecondVariant_"
     );
 
     assert_eq!(
-        crate_data.type_decls[2]
+        user_type_decls(&crate_data)[2]
             .item_meta
             .attr_info
             .rename
@@ -758,7 +768,7 @@ fn rename_attribute() -> anyhow::Result<()> {
     );
 
     assert_eq!(
-        crate_data.type_decls[3]
+        user_type_decls(&crate_data)[3]
             .item_meta
             .attr_info
             .rename
@@ -767,7 +777,7 @@ fn rename_attribute() -> anyhow::Result<()> {
     );
 
     assert_eq!(
-        crate_data.type_decls[2].kind.as_struct().unwrap()[0]
+        user_type_decls(&crate_data)[2].kind.as_struct().unwrap()[0]
             .attr_info
             .rename
             .as_deref(),
@@ -793,7 +803,8 @@ fn declaration_groups() -> anyhow::Result<()> {
     // There are 2 function items: one for `foo`, and one for the initializer of `Trait::FOO`.
     assert_eq!(crate_data.fun_decls.iter().count(), 2);
     let decl_groups = crate_data.ordered_decls.unwrap();
-    assert_eq!(decl_groups.len(), 6);
+    // One of the groups is the declaration of `()`, which every crate has.
+    assert_eq!(decl_groups.len(), 7);
 
     Ok(())
 }

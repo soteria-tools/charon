@@ -18,6 +18,13 @@ pub trait Sized<Self>
     non-dyn-compatible
 }
 
+struct () {}
+
+struct (_, _)<A, B> {
+  A,
+  B,
+}
+
 struct test_crate::Super::{vtable}<T> {
   size: usize,
   align: usize,

@@ -12,6 +12,8 @@ pub trait Sized<Self>
     non-dyn-compatible
 }
 
+struct () {}
+
 // Full name: core::marker::Destruct
 #[lang_item(Destruct)]
 pub trait Destruct<Self>
@@ -65,7 +67,11 @@ pub trait Fn<Self, Args>
     vtable: core::ops::function::Fn::{vtable}<Args, Self::ImpliedClause1::ImpliedClause1::Output>
 }
 
-// Full name: test_crate::<tuple_1>::{impl Destruct for (A,)}::drop_glue
+struct (_,)<A> {
+  A,
+}
+
+// Full name: (_,)::{impl Destruct for (A,)}::drop_glue
 unsafe fn impl_Destruct_for_tuple::drop_glue<'_0, A>(_1: &'_0 mut (A,))
 where
     TypeOutlives0: A: '_0,
@@ -82,7 +88,7 @@ where
     return
 }
 
-// Full name: test_crate::<tuple_1>::{impl Destruct for (A,)}
+// Full name: (_,)::{impl Destruct for (A,)}
 impl<A> "impl_Destruct_for_tuple" Destruct for (A,) {
     fn drop_glue<'_0_1> = impl_Destruct_for_tuple::drop_glue<'_0_1, A>
     non-dyn-compatible

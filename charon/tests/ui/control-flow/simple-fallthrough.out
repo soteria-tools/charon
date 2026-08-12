@@ -23,6 +23,8 @@ where
   Some(T),
 }
 
+struct () {}
+
 // Full name: test_crate::do_something
 fn do_something()
 {

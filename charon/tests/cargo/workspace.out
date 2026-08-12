@@ -10,6 +10,11 @@ pub fn random_number() -> u32
     return
 }
 
+struct (_, _)<A, B> {
+  A,
+  B,
+}
+
 // Full name: crate2::extra_random_number
 pub fn extra_random_number() -> u32
 {

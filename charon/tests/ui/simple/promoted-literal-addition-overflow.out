@@ -7,6 +7,11 @@ pub fn MAX() -> u32
 // Full name: core::num::{u32}::MAX
 pub const MAX: u32 = MAX()
 
+struct (_, _)<A, B> {
+  A,
+  B,
+}
+
 // Full name: test_crate::overflow
 fn overflow() -> &'static u32
 {

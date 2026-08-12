@@ -155,12 +155,6 @@ and cast_kind =
           namely, there may still be something like
           [Rc<dyn Trait<...>> -> Rc<T>] in the types. *)
 
-and field_proj_kind =
-  | ProjAdt of type_decl_id * variant_id option
-  | ProjTuple of int
-      (** If we project from a tuple, the projection kind gives the arity of the
-          tuple. *)
-
 and local_id = (LocalId.id[@visitors.opaque])
 
 (** Nullary operation *)
@@ -209,7 +203,7 @@ and place_kind =
 and projection_elem =
   | Deref
       (** Dereference a shared/mutable reference, a box, or a raw pointer. *)
-  | Field of field_proj_kind * field_id
+  | Field of type_decl_id * variant_id option * field_id
       (** Projection from ADTs (variants, structures). We allow projections to
           be used as left-values and right-values. We should never have
           projections to fields of symbolic variants (they should have been

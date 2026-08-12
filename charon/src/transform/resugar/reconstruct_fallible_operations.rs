@@ -165,7 +165,7 @@ struct PendingShiftCheck {
 /// Rustc inserts dynamic checks during MIR lowering. They all end in an `Assert` statement (and
 /// this is the only use of this statement).
 fn remove_dynamic_checks(
-    _ctx: &mut TransformCtx,
+    ctx: &mut TransformCtx,
     uses: &LocalUses,
     block_id: BlockId,
     locals: &mut Locals,
@@ -545,8 +545,7 @@ fn remove_dynamic_checks(
                     if p == tuple {
                         uses_of_tuple += 1;
                     }
-                    if let Some((sub, ProjectionElem::Field(FieldProjKind::Tuple(..), fid))) =
-                        p.as_projection()
+                    if let Some((sub, ProjectionElem::Field(_, _, fid))) = p.as_projection()
                         && fid.index() == 0
                         && sub == tuple
                     {
@@ -571,8 +570,7 @@ fn remove_dynamic_checks(
                 },
                 ..,
             ] = rest
-                && let Some((sub, ProjectionElem::Field(FieldProjKind::Tuple(..), fid))) =
-                    assert_cond.as_projection()
+                && let Some((sub, ProjectionElem::Field(_, _, fid))) = assert_cond.as_projection()
                 && fid.index() == 1
                 && sub == tuple
             {
@@ -598,14 +596,16 @@ fn remove_dynamic_checks(
             }
             // Fixup the local type.
             let result_local = &mut locals.locals[tuple_local_id];
-            result_local.ty = result_local.ty.as_tuple().unwrap()[0].clone();
+            result_local.ty = result_local
+                .ty
+                .as_tuple_fields(&ctx.translated)
+                .swap_remove(0);
             // Fixup the place type.
             let new_result_place = locals.place_for_var(tuple_local_id);
             // Replace uses of `r.0` with `r`.
             for stmt in rest.iter_mut() {
                 stmt.dyn_visit_in_body_mut(|p: &mut Place| {
-                    if let Some((sub, ProjectionElem::Field(FieldProjKind::Tuple(..), fid))) =
-                        p.as_projection()
+                    if let Some((sub, ProjectionElem::Field(_, _, fid))) = p.as_projection()
                         && sub == tuple
                     {
                         assert_eq!(fid.index(), 0);

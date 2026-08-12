@@ -8,6 +8,8 @@ pub opaque type Layout
 pub unsafe fn from_size_align_unchecked(_1: usize, _2: usize) -> Layout
 = <opaque>
 
+struct () {}
+
 // Full name: core::marker::Destruct
 #[lang_item(Destruct)]
 pub trait Destruct<Self>
@@ -132,6 +134,10 @@ impl "impl_Clone_for_usize" Clone for usize {
 // Full name: core::intrinsics::abort
 pub fn abort() -> !
 = <intrinsic:abort>
+
+struct str {
+  [u8],
+}
 
 // Full name: core::ptr::non_null::NonNull
 #[diagnostic_item("NonNull")]
@@ -487,14 +493,19 @@ fn check_language_ub() -> bool
     return
 }
 
+struct (_, _)<A, B> {
+  A,
+  B,
+}
+
 // Full name: core::panicking::panic_nounwind_fmt
 pub fn panic_nounwind_fmt<'_0>(fmt: Arguments<'_0>, force_no_backtrace: bool) -> !
 {
     let _0: !; // return
     let fmt: Arguments<'1>; // arg #1
     let force_no_backtrace: bool; // arg #2
-    let _3: (Arguments<'3>, bool); // anonymous local
-    let _4: Arguments<'4>; // anonymous local
+    let _3: (Arguments<'7>, bool); // anonymous local
+    let _4: Arguments<'8>; // anonymous local
     let _5: bool; // anonymous local
 
     storage_live(_0)
@@ -506,7 +517,7 @@ pub fn panic_nounwind_fmt<'_0>(fmt: Arguments<'_0>, force_no_backtrace: bool) ->
     _3 = (move _4, move _5)
     storage_dead(_5)
     storage_dead(_4)
-    _0 = core::panicking::panic_nounwind_fmt::runtime<'6>(move _3.0, move _3.1)
+    _0 = core::panicking::panic_nounwind_fmt::runtime<'11>(move _3.0, move _3.1)
     ↳⚡ storage_dead(_3)
         storage_dead(force_no_backtrace)
         storage_dead(fmt)
