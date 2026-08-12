@@ -4,7 +4,7 @@ use crate::ids::IndexVec;
 use crate::pretty::FmtWithCtx;
 use derive_generic_visitor::*;
 use macros::EnumIsA;
-use std::collections::HashMap;
+use std::collections::{HashMap, HashSet};
 use std::fmt::{self, Debug};
 
 /// Each `GenericArgs` is meant for a corresponding `GenericParams`; this describes which one.
@@ -73,13 +73,54 @@ impl FnPtrKind {
     }
 }
 
+/// Remove the given trait clauses from the items that declare them. The remaining clauses of each
+/// item are renumbered to stay contiguous, and every reference to them in the crate is updated to match.
+pub fn remove_clauses(
+    translated: &mut TranslatedCrate,
+    to_remove: &HashMap<ItemId, HashSet<TraitClauseId>>,
+) {
+    // For each item, a map from old clause ids to new ones. The new ones are in the same order,
+    // just skipping the removed ones.
+    let remaps: HashMap<ItemId, IndexVec<TraitClauseId, Option<TraitClauseId>>> = translated
+        .all_items_mut()
+        .filter_map(|mut item| {
+            let item_id = item.as_ref().id();
+            let clauses_to_remove = to_remove.get(&item_id)?;
+            if clauses_to_remove.is_empty() {
+                return None;
+            }
+            let item_clauses = &mut item.generic_params().trait_clauses;
+            let remap: IndexVec<TraitClauseId, Option<TraitClauseId>> =
+                std::mem::take(item_clauses).map_indexed(|old_id, mut clause| {
+                    if clauses_to_remove.contains(&old_id) {
+                        None
+                    } else {
+                        let new_id = item_clauses.push_with(|new_id| {
+                            clause.clause_id = new_id;
+                            clause
+                        });
+                        Some(new_id)
+                    }
+                });
+            Some((item_id, remap))
+        })
+        .collect();
+
+    for mut item in translated.all_items_mut() {
+        let item_id = item.as_ref().id();
+        item.drive_mut(&mut RemoveClausesVisitor {
+            remaps: &remaps,
+            current_item: item_id,
+            binder_depth: DeBruijnId::ZERO,
+        });
+    }
+}
+
 #[derive(Visitor)]
-pub struct RemoveClausesVisitor<'a> {
-    /// For each item, a map from old clause ids to new ones. The new ones are in the same order,
-    /// just skipping some removed old ones.
-    pub remaps: &'a HashMap<ItemId, IndexVec<TraitClauseId, Option<TraitClauseId>>>,
-    pub current_item: ItemId,
-    pub binder_depth: DeBruijnId,
+struct RemoveClausesVisitor<'a> {
+    remaps: &'a HashMap<ItemId, IndexVec<TraitClauseId, Option<TraitClauseId>>>,
+    current_item: ItemId,
+    binder_depth: DeBruijnId,
 }
 
 impl VisitorWithBinderDepth for RemoveClausesVisitor<'_> {
@@ -110,7 +151,7 @@ impl VisitAstMut for RemoveClausesVisitor<'_> {
             && let Some(clause_id) = var.bound_at_depth_mut(self.binder_depth)
             && let Some(remap) = self.remaps.get(&self.current_item)
         {
-            *clause_id = remap[*clause_id].expect("mismatch while trying to remove unused clauses");
+            *clause_id = remap[*clause_id].expect("mismatch while trying to remove clauses");
         }
         self.visit_inner(x)
     }

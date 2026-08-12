@@ -6,9 +6,8 @@ use petgraph::{graphmap::DiGraphMap, visit::Dfs};
 use std::collections::{HashMap, HashSet};
 
 use crate::ast::*;
-use crate::ids::IndexVec;
 
-use crate::transform::utils::RemoveClausesVisitor;
+use crate::transform::utils::remove_clauses;
 use crate::transform::{TransformCtx, ctx::TransformPass};
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq, PartialOrd, Ord, Hash)]
@@ -135,49 +134,25 @@ impl TransformPass for Transform {
             graph
         };
 
-        // Remove the unused clauses and collect a global remapping of clause ids.
-        let remaps: HashMap<ItemId, IndexVec<TraitClauseId, Option<TraitClauseId>>> = {
-            let reachable: HashSet<ClauseNode> =
-                Dfs::new(&graph, ClauseNode::Root).iter(&graph).collect();
-            ctx.translated
-                .all_items_mut()
-                .filter_map(|mut item| {
-                    let item_id = item.as_ref().id();
-                    let item_clauses = &mut item.generic_params().trait_clauses;
-                    let clauses_to_remove: HashSet<TraitClauseId> = item_clauses
-                        .indices()
-                        .filter(|clause_id| {
-                            !reachable.contains(&ClauseNode::Clause(item_id, *clause_id))
-                        })
-                        .collect();
-                    if clauses_to_remove.is_empty() {
-                        return None;
-                    }
-                    let remap: IndexVec<TraitClauseId, Option<TraitClauseId>> =
-                        std::mem::take(item_clauses).map_indexed(|old_id, mut clause| {
-                            if clauses_to_remove.contains(&old_id) {
-                                None
-                            } else {
-                                let new_id = item_clauses.push_with(|new_id| {
-                                    clause.clause_id = new_id;
-                                    clause
-                                });
-                                Some(new_id)
-                            }
-                        });
-                    Some((item_id, remap))
-                })
-                .collect()
-        };
-
-        // Adjust references to clauses.
-        for mut item in ctx.translated.all_items_mut() {
-            let item_id = item.as_ref().id();
-            item.drive_mut(&mut RemoveClausesVisitor {
-                remaps: &remaps,
-                current_item: item_id,
-                binder_depth: DeBruijnId::ZERO,
-            });
-        }
+        // Remove the clauses that the root doesn't reach.
+        let reachable: HashSet<ClauseNode> =
+            Dfs::new(&graph, ClauseNode::Root).iter(&graph).collect();
+        let to_remove: HashMap<ItemId, HashSet<TraitClauseId>> = ctx
+            .translated
+            .all_items()
+            .map(|item| {
+                let item_id = item.id();
+                let clauses = item
+                    .generic_params()
+                    .trait_clauses
+                    .indices()
+                    .filter(|clause_id| {
+                        !reachable.contains(&ClauseNode::Clause(item_id, *clause_id))
+                    })
+                    .collect();
+                (item_id, clauses)
+            })
+            .collect();
+        remove_clauses(&mut ctx.translated, &to_remove);
     }
 }
