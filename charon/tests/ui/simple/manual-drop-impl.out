@@ -46,10 +46,9 @@ pub struct Global {}
 pub opaque type Vec<T>
 where
     TraitClause0: (T: Sized),
-    TraitClause1: (type_error("removed allocator parameter"): Sized),
 
-// Full name: alloc::vec::Vec::{impl Destruct for Vec<T>[TraitClause0, TraitClause1]}::drop_glue
-unsafe fn impl_Destruct_for_Vec::drop_glue<'_0, T, A>(_1: &'_0 mut Vec<T>[TraitClause0, TraitClause1])
+// Full name: alloc::vec::Vec::{impl Destruct for Vec<T>[TraitClause0]}::drop_glue
+unsafe fn impl_Destruct_for_Vec::drop_glue<'_0, T, A>(_1: &'_0 mut Vec<T>[TraitClause0])
 where
     TraitClause0: (T: Sized),
     TraitClause1: (A: Sized),
@@ -62,7 +61,7 @@ struct Foo<T>
 where
     TraitClause0: (T: Sized),
 {
-  vec: Vec<T>[TraitClause0, {built_in impl Sized for Global}],
+  vec: Vec<T>[TraitClause0],
 }
 
 // Full name: test_crate::{impl Drop for Foo<T>[TraitClause0]}::drop

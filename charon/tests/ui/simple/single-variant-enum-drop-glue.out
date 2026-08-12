@@ -31,10 +31,9 @@ pub struct Global {}
 pub opaque type Box<T>
 where
     TraitClause0: (T: MetaSized),
-    TraitClause1: (type_error("removed allocator parameter"): Sized),
 
-// Full name: alloc::boxed::Box::{impl Destruct for Box<T>[TraitClause0, TraitClause1]}::drop_glue
-unsafe fn impl_Destruct_for_Box::drop_glue<'_0, T, A>(_1: &'_0 mut Box<T>[TraitClause0, TraitClause1])
+// Full name: alloc::boxed::Box::{impl Destruct for Box<T>[TraitClause0]}::drop_glue
+unsafe fn impl_Destruct_for_Box::drop_glue<'_0, T, A>(_1: &'_0 mut Box<T>[TraitClause0])
 where
     TraitClause0: (T: MetaSized),
     TraitClause1: (A: Sized),
@@ -44,7 +43,7 @@ where
 
 // Full name: test_crate::Thing
 pub enum Thing {
-  A(Box<()>[{built_in impl MetaSized for ()}, {built_in impl Sized for Global}]),
+  A(Box<()>[{built_in impl MetaSized for ()}]),
 }
 
 // Full name: test_crate::Thing::{impl Destruct for Thing}::drop_glue

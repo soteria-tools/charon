@@ -12,16 +12,11 @@ pub trait Sized<Self>
     non-dyn-compatible
 }
 
-// Full name: alloc::alloc::Global
-#[lang_item(GlobalAlloc)]
-pub struct Global {}
-
 // Full name: alloc::vec::Vec
 #[diagnostic_item("Vec")]
 pub opaque type Vec<T>
 where
     TraitClause0: (T: Sized),
-    TraitClause1: (type_error("removed allocator parameter"): Sized),
 
 struct () {}
 
@@ -29,7 +24,7 @@ struct () {}
 trait Collection<Self>
 {
     proof ImpliedClause0: (Self: MetaSized)
-    type Sibling<U> = Vec<U>[TraitClause0_1, {built_in impl Sized for Global}]
+    type Sibling<U> = Vec<U>[TraitClause0_1]
     where
         TraitClause0_1: (U: Sized),
         proof ImpliedClause0: (Self::Sibling<U>[TraitClause0_1]: Sized);
@@ -39,7 +34,7 @@ trait Collection<Self>
 // Full name: test_crate::{impl Collection for ()}
 impl "impl_Collection_for_unit" Collection for () {
     proof ImpliedClause0: ((): MetaSized) = {built_in impl MetaSized for ()}
-    type Sibling<U> = Vec<U>[TraitClause0_1, {built_in impl Sized for Global}]
+    type Sibling<U> = Vec<U>[TraitClause0_1]
     where
         TraitClause0_1: (U: Sized),
         proof ImpliedClause0: (impl_Collection_for_unit::Sibling<U>[TraitClause0_1]: Sized) = impl_Collection_for_unit::Sibling::ImpliedClause0;

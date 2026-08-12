@@ -57,12 +57,10 @@ impl "impl_Destruct_for_Global" Destruct for Global {
 pub opaque type Box<T>
 where
     TraitClause0: (T: MetaSized),
-    TraitClause1: (type_error("removed allocator parameter"): Sized),
-    TraitClause2: (T: Destruct),
-    TraitClause3: (type_error("removed allocator parameter"): Destruct),
+    TraitClause1: (T: Destruct),
 
-// Full name: alloc::boxed::Box::{impl Destruct for Box<T>[TraitClause0, TraitClause1, TraitClause2, TraitClause3]}::drop_glue
-unsafe fn impl_Destruct_for_Box::drop_glue<'_0, T, A>(_1: &'_0 mut Box<T>[TraitClause0, TraitClause1, TraitClause2, TraitClause3])
+// Full name: alloc::boxed::Box::{impl Destruct for Box<T>[TraitClause0, TraitClause2]}::drop_glue
+unsafe fn impl_Destruct_for_Box::drop_glue<'_0, T, A>(_1: &'_0 mut Box<T>[TraitClause0, TraitClause2])
 where
     TraitClause0: (T: MetaSized),
     TraitClause1: (A: Sized),
@@ -74,13 +72,13 @@ where
 
 // Full name: test_crate::B
 struct B {
-  x: Box<u32>[{built_in impl MetaSized for u32}, {built_in impl Sized for Global}, {built_in impl Destruct for u32}, impl_Destruct_for_Global],
-  y: Box<u32>[{built_in impl MetaSized for u32}, {built_in impl Sized for Global}, {built_in impl Destruct for u32}, impl_Destruct_for_Global],
+  x: Box<u32>[{built_in impl MetaSized for u32}, {built_in impl Destruct for u32}],
+  y: Box<u32>[{built_in impl MetaSized for u32}, {built_in impl Destruct for u32}],
 }
 
 // Full name: test_crate::A
 struct A {
-  x: Box<u32>[{built_in impl MetaSized for u32}, {built_in impl Sized for Global}, {built_in impl Destruct for u32}, impl_Destruct_for_Global],
+  x: Box<u32>[{built_in impl MetaSized for u32}, {built_in impl Destruct for u32}],
   b: B,
 }
 

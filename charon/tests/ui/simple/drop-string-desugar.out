@@ -41,18 +41,16 @@ impl "impl_Destruct_for_Global" Destruct for Global {
 pub opaque type Vec<T>
 where
     TraitClause0: (T: Sized),
-    TraitClause1: (type_error("removed allocator parameter"): Sized),
-    TraitClause2: (T: Destruct),
-    TraitClause3: (type_error("removed allocator parameter"): Destruct),
+    TraitClause1: (T: Destruct),
 
 // Full name: alloc::string::String
 #[lang_item(String)]
 pub struct String {
-  vec: Vec<u8>[{built_in impl Sized for u8}, {built_in impl Sized for Global}, {built_in impl Destruct for u8}, impl_Destruct_for_Global],
+  vec: Vec<u8>[{built_in impl Sized for u8}, {built_in impl Destruct for u8}],
 }
 
-// Full name: alloc::vec::Vec::{impl Destruct for Vec<T>[TraitClause0, TraitClause1, TraitClause2, TraitClause3]}::drop_glue
-unsafe fn impl_Destruct_for_Vec::drop_glue<'_0, T, A>(_1: &'_0 mut Vec<T>[TraitClause0, TraitClause1, TraitClause2, TraitClause3])
+// Full name: alloc::vec::Vec::{impl Destruct for Vec<T>[TraitClause0, TraitClause2]}::drop_glue
+unsafe fn impl_Destruct_for_Vec::drop_glue<'_0, T, A>(_1: &'_0 mut Vec<T>[TraitClause0, TraitClause2])
 where
     TraitClause0: (T: Sized),
     TraitClause1: (A: Sized),
@@ -67,7 +65,7 @@ unsafe fn impl_Destruct_for_String::drop_glue<'_0>(_1: &'_0 mut String)
 {
     let _0: (); // return
     let _1: &'1 mut String; // arg #1
-    let drop_arg: &'_ mut Vec<u8>[{built_in impl Sized for u8}, {built_in impl Sized for Global}, {built_in impl Destruct for u8}, impl_Destruct_for_Global]; // local
+    let drop_arg: &'_ mut Vec<u8>[{built_in impl Sized for u8}, {built_in impl Destruct for u8}]; // local
     let drop_ret: (); // local
 
     storage_live(_0)

@@ -196,10 +196,9 @@ impl "impl_Destruct_for_Global" Destruct for Global {
 pub opaque type Vec<T>
 where
     TraitClause0: (T: Sized),
-    TraitClause1: (type_error("removed allocator parameter"): Sized),
 
-// Full name: alloc::vec::Vec::{impl Destruct for Vec<T>[TraitClause0, TraitClause1]}::drop_glue
-unsafe fn impl_Destruct_for_Vec::drop_glue<'_0, T, A>(_1: &'_0 mut Vec<T>[TraitClause0, TraitClause1])
+// Full name: alloc::vec::Vec::{impl Destruct for Vec<T>[TraitClause0]}::drop_glue
+unsafe fn impl_Destruct_for_Vec::drop_glue<'_0, T, A>(_1: &'_0 mut Vec<T>[TraitClause0])
 where
     TraitClause0: (T: Sized),
     TraitClause1: (A: Sized),
@@ -208,13 +207,13 @@ where
 = <opaque>
 
 #[diagnostic_item("vec_new")]
-pub fn alloc::vec::{Vec<T>[TraitClause0, {built_in impl Sized for Global}]}::new<T>() -> Vec<T>[TraitClause0, {built_in impl Sized for Global}]
+pub fn alloc::vec::{Vec<T>[TraitClause0]}::new<T>() -> Vec<T>[TraitClause0]
 where
     TraitClause0: (T: Sized),
 = <opaque>
 
-// Full name: alloc::vec::{Vec<T>[TraitClause0, TraitClause1]}::push
-pub fn push<'_0, T, A>(_1: &'_0 mut Vec<T>[TraitClause0, TraitClause1], _2: T)
+// Full name: alloc::vec::{Vec<T>[TraitClause0]}::push
+pub fn push<'_0, T, A>(_1: &'_0 mut Vec<T>[TraitClause0], _2: T)
 where
     TraitClause0: (T: Sized),
     TraitClause1: (A: Sized),
@@ -284,9 +283,9 @@ pub fn test_new_non_zero_u32(x: u32) -> NonZero<u32>[{built_in impl Sized for u3
 pub fn test_vec_push()
 {
     let _0: (); // return
-    let v: Vec<u32>[{built_in impl Sized for u32}, {built_in impl Sized for Global}]; // local
+    let v: Vec<u32>[{built_in impl Sized for u32}]; // local
     let _2: (); // anonymous local
-    let _3: &'1 mut Vec<u32>[{built_in impl Sized for u32}, {built_in impl Sized for Global}]; // anonymous local
+    let _3: &'1 mut Vec<u32>[{built_in impl Sized for u32}]; // anonymous local
 
     storage_live(_0)
     _0 = ()
@@ -294,7 +293,7 @@ pub fn test_vec_push()
     v = alloc::vec::{Vec<T>[TraitClause0, {built_in impl Sized for Global}]}::new<u32>[{built_in impl Sized for u32}]()
     ↳⚡ unwind_continue
     fake_read(v)
-    set_type(typeof(v) == Vec<u32>[{built_in impl Sized for u32}, {built_in impl Sized for Global}])
+    set_type(typeof(v) == Vec<u32>[{built_in impl Sized for u32}])
     storage_live(_2)
     storage_live(_3)
     _3 = &two-phase-mut v

@@ -60,12 +60,10 @@ impl "impl_Destruct_for_Global" Destruct for Global {
 pub opaque type Box<T>
 where
     TraitClause0: (T: MetaSized),
-    TraitClause1: (type_error("removed allocator parameter"): Sized),
-    TraitClause2: (T: Destruct),
-    TraitClause3: (type_error("removed allocator parameter"): Destruct),
+    TraitClause1: (T: Destruct),
 
-// Full name: alloc::boxed::Box::{impl Destruct for Box<T>[TraitClause0, TraitClause1, TraitClause2, TraitClause3]}::drop_glue
-unsafe fn impl_Destruct_for_Box::drop_glue<'_0, T, A>(_1: &'_0 mut Box<T>[TraitClause0, TraitClause1, TraitClause2, TraitClause3])
+// Full name: alloc::boxed::Box::{impl Destruct for Box<T>[TraitClause0, TraitClause2]}::drop_glue
+unsafe fn impl_Destruct_for_Box::drop_glue<'_0, T, A>(_1: &'_0 mut Box<T>[TraitClause0, TraitClause2])
 where
     TraitClause0: (T: MetaSized),
     TraitClause1: (A: Sized),
@@ -290,10 +288,10 @@ fn drop_array(_1: [String; 4usize])
 }
 
 // Full name: test_crate::drop_slice
-fn drop_slice(_1: Box<[String]>[{built_in impl MetaSized for [String]}, {built_in impl Sized for Global}, impl_Destruct_for_slice<String>[{built_in impl Sized for String}, impl_Destruct_for_String], impl_Destruct_for_Global])
+fn drop_slice(_1: Box<[String]>[{built_in impl MetaSized for [String]}, impl_Destruct_for_slice<String>[{built_in impl Sized for String}, impl_Destruct_for_String]])
 {
     let _0: (); // return
-    let _1: Box<[String]>[{built_in impl MetaSized for [String]}, {built_in impl Sized for Global}, impl_Destruct_for_slice<String>[{built_in impl Sized for String}, impl_Destruct_for_String], impl_Destruct_for_Global]; // arg #1
+    let _1: Box<[String]>[{built_in impl MetaSized for [String]}, impl_Destruct_for_slice<String>[{built_in impl Sized for String}, impl_Destruct_for_String]]; // arg #1
 
     storage_live(_0)
     _0 = ()

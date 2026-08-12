@@ -33,16 +33,11 @@ where
   Some(T),
 }
 
-// Full name: alloc::alloc::Global
-#[lang_item(GlobalAlloc)]
-pub struct Global {}
-
 // Full name: alloc::boxed::Box
 #[lang_item(OwnedBox)]
 pub opaque type Box<T>
 where
     TraitClause0: (T: MetaSized),
-    TraitClause1: (type_error("removed allocator parameter"): Sized),
 
 struct str {
   [u8],
@@ -68,7 +63,7 @@ trait Trait<Self, T>
     non-dyn-compatible
 }
 
-// Full name: test_crate::{impl Trait<Option<T>[TraitClause0]> for Box<T>[TraitClause0::ImpliedClause0, {built_in impl Sized for Global}]}::method
+// Full name: test_crate::{impl Trait<Option<T>[TraitClause0]> for Box<T>[TraitClause0::ImpliedClause0]}::method
 fn impl_Trait_Option_for_Box_Global::method<T, U>()
 where
     TraitClause0: (T: Sized),
@@ -82,12 +77,12 @@ where
     return
 }
 
-// Full name: test_crate::{impl Trait<Option<T>[TraitClause0]> for Box<T>[TraitClause0::ImpliedClause0, {built_in impl Sized for Global}]}
-impl<T> "impl_Trait_Option_for_Box_Global" Trait<Option<T>[TraitClause0]> for Box<T>[TraitClause0::ImpliedClause0, {built_in impl Sized for Global}]
+// Full name: test_crate::{impl Trait<Option<T>[TraitClause0]> for Box<T>[TraitClause0::ImpliedClause0]}
+impl<T> "impl_Trait_Option_for_Box_Global" Trait<Option<T>[TraitClause0]> for Box<T>[TraitClause0::ImpliedClause0]
 where
     TraitClause0: (T: Sized),
 {
-    proof ImpliedClause0: (Box<T>[TraitClause0::ImpliedClause0, {built_in impl Sized for Global}]: MetaSized) = {built_in impl MetaSized for Box<T>[TraitClause0::ImpliedClause0, {built_in impl Sized for Global}]}
+    proof ImpliedClause0: (Box<T>[TraitClause0::ImpliedClause0]: MetaSized) = {built_in impl MetaSized for Box<T>[TraitClause0::ImpliedClause0]}
     proof ImpliedClause1: (Option<T>[TraitClause0]: Sized) = {built_in impl Sized for Option<T>[TraitClause0]}
     fn method<U, TraitClause0_1: (U: Sized)> = impl_Trait_Option_for_Box_Global::method<T, U>[TraitClause0, TraitClause0_1]
     non-dyn-compatible

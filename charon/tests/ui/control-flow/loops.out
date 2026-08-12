@@ -391,16 +391,14 @@ pub struct Global {}
 pub opaque type Box<T>
 where
     TraitClause0: (T: MetaSized),
-    TraitClause1: (type_error("removed allocator parameter"): Sized),
 
 // Full name: alloc::vec::Vec
 #[diagnostic_item("Vec")]
 pub opaque type Vec<T>
 where
     TraitClause0: (T: Sized),
-    TraitClause1: (type_error("removed allocator parameter"): Sized),
 
-pub fn alloc::vec::{Vec<T>[TraitClause0, TraitClause1]}::len<'_0, T, A>(_1: &'_0 Vec<T>[TraitClause0, TraitClause1]) -> usize
+pub fn alloc::vec::{Vec<T>[TraitClause0]}::len<'_0, T, A>(_1: &'_0 Vec<T>[TraitClause0]) -> usize
 where
     TraitClause0: (T: Sized),
     TraitClause1: (A: Sized),
@@ -408,8 +406,8 @@ where
     TypeOutlives1: A: '_0,
 = <opaque>
 
-// Full name: alloc::vec::{impl IndexMut<I> for Vec<T>[TraitClause0, TraitClause2]}::index_mut
-pub fn impl_IndexMut_for_Vec::index_mut<'_0, T, I, A>(_1: &'_0 mut Vec<T>[TraitClause0, TraitClause2], _2: I) -> &'_0 mut TraitClause3::Output
+// Full name: alloc::vec::{impl IndexMut<I> for Vec<T>[TraitClause0]}::index_mut
+pub fn impl_IndexMut_for_Vec::index_mut<'_0, T, I, A>(_1: &'_0 mut Vec<T>[TraitClause0], _2: I) -> &'_0 mut TraitClause3::Output
 where
     TraitClause0: (T: Sized),
     TraitClause1: (I: Sized),
@@ -1594,17 +1592,17 @@ pub fn sum_array<const N : usize>(a: [u32; N]) -> u32
 }
 
 // Full name: test_crate::clear
-pub fn clear<'_0>(v: &'_0 mut Vec<u32>[{built_in impl Sized for u32}, {built_in impl Sized for Global}])
+pub fn clear<'_0>(v: &'_0 mut Vec<u32>[{built_in impl Sized for u32}])
 {
     let _0: (); // return
-    let v: &'1 mut Vec<u32>[{built_in impl Sized for u32}, {built_in impl Sized for Global}]; // arg #1
+    let v: &'1 mut Vec<u32>[{built_in impl Sized for u32}]; // arg #1
     let i: usize; // local
     let _3: bool; // anonymous local
     let _4: usize; // anonymous local
     let _5: usize; // anonymous local
-    let _6: &'3 Vec<u32>[{built_in impl Sized for u32}, {built_in impl Sized for Global}]; // anonymous local
+    let _6: &'3 Vec<u32>[{built_in impl Sized for u32}]; // anonymous local
     let _7: &'5 mut u32; // anonymous local
-    let _8: &'6 mut Vec<u32>[{built_in impl Sized for u32}, {built_in impl Sized for Global}]; // anonymous local
+    let _8: &'6 mut Vec<u32>[{built_in impl Sized for u32}]; // anonymous local
     let _9: usize; // anonymous local
     let _10: usize; // anonymous local
 
@@ -1666,7 +1664,7 @@ pub enum List<T>
 where
     TraitClause0: (T: Sized),
 {
-  Cons(T, Box<List<T>[TraitClause0]>[{built_in impl MetaSized for List<T>[TraitClause0]}, {built_in impl Sized for Global}]),
+  Cons(T, Box<List<T>[TraitClause0]>[{built_in impl MetaSized for List<T>[TraitClause0]}]),
   Nil,
 }
 
@@ -1677,7 +1675,7 @@ pub fn get_elem_mut<'_0>(ls: &'_0 mut List<usize>[{built_in impl Sized for usize
     let ls: &'3 mut List<usize>[{built_in impl Sized for usize}]; // arg #1
     let x: usize; // arg #2
     let y: &'4 mut usize; // local
-    let tl: &'6 mut Box<List<usize>[{built_in impl Sized for usize}]>[{built_in impl MetaSized for List<usize>[{built_in impl Sized for usize}]}, {built_in impl Sized for Global}]; // local
+    let tl: &'6 mut Box<List<usize>[{built_in impl Sized for usize}]>[{built_in impl MetaSized for List<usize>[{built_in impl Sized for usize}]}]; // local
     let _5: bool; // anonymous local
     let _6: usize; // anonymous local
     let _7: usize; // anonymous local
@@ -1739,7 +1737,7 @@ where
     let ls: &'3 mut List<T>[TraitClause0]; // arg #1
     let i: u32; // arg #2
     let x: &'4 mut T; // local
-    let tl: &'6 mut Box<List<T>[TraitClause0]>[{built_in impl MetaSized for List<T>[TraitClause0]}, {built_in impl Sized for Global}]; // local
+    let tl: &'6 mut Box<List<T>[TraitClause0]>[{built_in impl MetaSized for List<T>[TraitClause0]}]; // local
     let _5: bool; // anonymous local
     let _6: u32; // anonymous local
     let _7: &'7 mut List<T>[TraitClause0]; // anonymous local

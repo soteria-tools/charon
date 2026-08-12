@@ -55,10 +55,9 @@ impl "impl_Debug_for_Error" Debug for Error {
 pub opaque type Vec<T>
 where
     TraitClause0: (T: Sized),
-    TraitClause1: (type_error("removed allocator parameter"): Sized),
 
-// Full name: std::io::impls::{impl Write for Vec<u8>[{built_in impl Sized for u8}, TraitClause0]}::write_all
-pub fn impl_Write_for_Vec_u8::write_all<'_0, '_1, A>(_1: &'_0 mut Vec<u8>[{built_in impl Sized for u8}, TraitClause0], _2: &'_1 [u8]) -> Result<(), Error>[{built_in impl Sized for ()}, {built_in impl Sized for Error}]
+// Full name: std::io::impls::{impl Write for Vec<u8>[{built_in impl Sized for u8}]}::write_all
+pub fn impl_Write_for_Vec_u8::write_all<'_0, '_1, A>(_1: &'_0 mut Vec<u8>[{built_in impl Sized for u8}], _2: &'_1 [u8]) -> Result<(), Error>[{built_in impl Sized for ()}, {built_in impl Sized for Error}]
 where
     TraitClause0: (A: Sized),
     TypeOutlives0: A: '_0,
@@ -68,8 +67,8 @@ where
 #[lang_item(GlobalAlloc)]
 pub struct Global {}
 
-// Full name: alloc::vec::Vec::{impl Destruct for Vec<T>[TraitClause0, TraitClause1]}::drop_glue
-unsafe fn impl_Destruct_for_Vec::drop_glue<'_0, T, A>(_1: &'_0 mut Vec<T>[TraitClause0, TraitClause1])
+// Full name: alloc::vec::Vec::{impl Destruct for Vec<T>[TraitClause0]}::drop_glue
+unsafe fn impl_Destruct_for_Vec::drop_glue<'_0, T, A>(_1: &'_0 mut Vec<T>[TraitClause0])
 where
     TraitClause0: (T: Sized),
     TraitClause1: (A: Sized),
@@ -77,9 +76,9 @@ where
     TypeOutlives1: A: '_0,
 = <opaque>
 
-// Full name: alloc::vec::{Vec<T>[TraitClause0, {built_in impl Sized for Global}]}::new
+// Full name: alloc::vec::{Vec<T>[TraitClause0]}::new
 #[diagnostic_item("vec_new")]
-pub fn new<T>() -> Vec<T>[TraitClause0, {built_in impl Sized for Global}]
+pub fn new<T>() -> Vec<T>[TraitClause0]
 where
     TraitClause0: (T: Sized),
 = <opaque>
@@ -88,10 +87,10 @@ where
 fn main()
 {
     let _0: (); // return
-    let buf: Vec<u8>[{built_in impl Sized for u8}, {built_in impl Sized for Global}]; // local
+    let buf: Vec<u8>[{built_in impl Sized for u8}]; // local
     let _2: (); // anonymous local
     let _3: Result<(), Error>[{built_in impl Sized for ()}, {built_in impl Sized for Error}]; // anonymous local
-    let _4: &'1 mut Vec<u8>[{built_in impl Sized for u8}, {built_in impl Sized for Global}]; // anonymous local
+    let _4: &'1 mut Vec<u8>[{built_in impl Sized for u8}]; // anonymous local
     let _5: &'3 [u8]; // anonymous local
     let _6: &'5 [u8; 5usize]; // anonymous local
     let _7: &'6 [u8; 5usize]; // anonymous local
@@ -104,7 +103,7 @@ fn main()
     buf = new<u8>[{built_in impl Sized for u8}]()
     ↳⚡ unwind_continue
     fake_read(buf)
-    set_type(typeof(buf) == Vec<u8>[{built_in impl Sized for u8}, {built_in impl Sized for Global}])
+    set_type(typeof(buf) == Vec<u8>[{built_in impl Sized for u8}])
     storage_live(_2)
     storage_live(_3)
     storage_live(_4)
