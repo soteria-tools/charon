@@ -1,5 +1,17 @@
 # Final LLBC before serialization:
 
+// Full name: core::marker::MetaSized
+#[lang_item(MetaSized)]
+pub trait MetaSized<Self>
+
+// Full name: core::marker::Sized
+#[lang_item(Sized)]
+pub trait Sized<Self>
+{
+    proof ImpliedClause0: (Self: MetaSized)
+    non-dyn-compatible
+}
+
 // Full name: crate1::random_number
 pub fn random_number() -> u32
 {
@@ -10,7 +22,10 @@ pub fn random_number() -> u32
     return
 }
 
-struct (_, _)<A, B> {
+struct (_, _)<A, B>
+where
+    TraitClause0: (A: Sized),
+{
   A,
   B,
 }

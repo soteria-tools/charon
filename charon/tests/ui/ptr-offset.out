@@ -1,16 +1,5 @@
 # Final LLBC before serialization:
 
-struct (_, _)<A, B> {
-  A,
-  B,
-}
-
-struct () {}
-
-// Full name: core::ptr::const_ptr::{*const T}::addr
-pub fn addr<T>(_1: *const T) -> usize
-= <opaque>
-
 // Full name: core::marker::MetaSized
 #[lang_item(MetaSized)]
 pub trait MetaSized<Self>
@@ -22,6 +11,20 @@ pub trait Sized<Self>
     proof ImpliedClause0: (Self: MetaSized)
     non-dyn-compatible
 }
+
+struct (_, _)<A, B>
+where
+    TraitClause0: (A: Sized),
+{
+  A,
+  B,
+}
+
+struct () {}
+
+// Full name: core::ptr::const_ptr::{*const T}::addr
+pub fn addr<T>(_1: *const T) -> usize
+= <opaque>
 
 // Full name: core::option::Option
 #[lang_item(Option)]
@@ -145,7 +148,11 @@ struct str {
   [u8],
 }
 
-struct (_, _, _)<A, B, C> {
+struct (_, _, _)<A, B, C>
+where
+    TraitClause0: (A: Sized),
+    TraitClause1: (B: Sized),
+{
   A,
   B,
   C,

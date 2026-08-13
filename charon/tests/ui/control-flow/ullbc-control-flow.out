@@ -124,7 +124,10 @@ impl "impl_PartialOrd_usize_for_usize" PartialOrd<usize> for usize {
     vtable: impl_PartialOrd_usize_for_usize::{vtable}
 }
 
-struct (_, _)<A, B> {
+struct (_, _)<A, B>
+where
+    TraitClause0: (A: Sized),
+{
   A,
   B,
 }

@@ -27,7 +27,10 @@ pub fn MAX() -> u32
 // Full name: core::num::{u32}::MAX
 pub const MAX: u32 = MAX()
 
-struct (_, _)<A, B> {
+struct (_, _)<A, B>
+where
+    TraitClause0: (A: Sized),
+{
   A,
   B,
 }

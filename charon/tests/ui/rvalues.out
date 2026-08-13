@@ -95,7 +95,10 @@ pub trait Fn<Self, Args>
     vtable: core::ops::function::Fn::{vtable}<Args, Self::ImpliedClause1::ImpliedClause1::Output>
 }
 
-struct (_, _)<A, B> {
+struct (_, _)<A, B>
+where
+    TraitClause0: (A: Sized),
+{
   A,
   B,
 }

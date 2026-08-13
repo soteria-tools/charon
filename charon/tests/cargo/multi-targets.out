@@ -1,4 +1,17 @@
-struct (_, _)<A, B> {
+#[lang_item(MetaSized)]
+pub trait core::marker::MetaSized<Self>
+
+#[lang_item(Sized)]
+pub trait core::marker::Sized<Self>
+{
+    proof ImpliedClause0: (Self: core::marker::MetaSized)
+    non-dyn-compatible
+}
+
+struct (_, _)<A, B>
+where
+    TraitClause0: (A: core::marker::Sized),
+{
   A,
   B,
 }

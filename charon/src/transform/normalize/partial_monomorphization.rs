@@ -197,7 +197,7 @@ impl<'pm, 'ctx> VisitAstMut for MutabilityShapeBuilder<'pm, 'ctx> {
         }
     }
     fn exit_ty_kind(&mut self, kind: &mut TyKind) {
-        if let TyKind::Adt(TypeDeclRef { id, generics }, None) = kind {
+        if let TyKind::Adt(TypeDeclRef { id, generics }, _) = kind {
             // Since the type was not replaced with a type var, it's an infected type. We've
             // traversed it so we have its final explicit arguments. Now we need to satisfy its
             // predicates. For that we add all its predicates to the new item, and pass those new

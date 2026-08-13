@@ -71,7 +71,10 @@ where
     TypeConstraint0: TraitClause2::Output = T,
 = <opaque>
 
-struct (_, _)<A, B> {
+struct (_, _)<A, B>
+where
+    TraitClause0: (A: Sized),
+{
   A,
   B,
 }
@@ -158,23 +161,23 @@ fn main()
     let _3: &'1 mut u32; // anonymous local
     let _4: &'2 mut u32; // anonymous local
     let _5: (&'10 u32, &'11 u32); // anonymous local
-    let _6: &'12 u32; // anonymous local
-    let _7: &'13 u32; // anonymous local
-    let left_val: &'14 u32; // local
-    let right_val: &'15 u32; // local
+    let _6: &'14 u32; // anonymous local
+    let _7: &'15 u32; // anonymous local
+    let left_val: &'16 u32; // local
+    let right_val: &'17 u32; // local
     let _10: bool; // anonymous local
     let _11: u32; // anonymous local
     let _12: u32; // anonymous local
     let kind: AssertKind; // local
     let _14: AssertKind; // anonymous local
-    let _15: &'16 u32; // anonymous local
-    let _16: &'17 u32; // anonymous local
-    let _17: &'18 u32; // anonymous local
-    let _18: &'19 u32; // anonymous local
-    let _19: Option<Arguments<'26>>[{built_in impl Sized for Arguments<'26>}]; // anonymous local
-    let _20: &'29 u32; // anonymous local
-    let _21: &'32 u32; // anonymous local
-    let _22: &'42 u32; // anonymous local
+    let _15: &'18 u32; // anonymous local
+    let _16: &'19 u32; // anonymous local
+    let _17: &'20 u32; // anonymous local
+    let _18: &'21 u32; // anonymous local
+    let _19: Option<Arguments<'28>>[{built_in impl Sized for Arguments<'28>}]; // anonymous local
+    let _20: &'31 u32; // anonymous local
+    let _21: &'34 u32; // anonymous local
+    let _22: &'46 u32; // anonymous local
     let _23: u32; // anonymous local
 
     storage_live(_0)
@@ -188,7 +191,7 @@ fn main()
     storage_live(_4)
     _4 = &mut x
     _3 = &two-phase-mut (*_4)
-    _2 = silly_incr<'31>(move _3)
+    _2 = silly_incr<'33>(move _3)
     ↳⚡ storage_dead(_20)
         storage_dead(_19)
         storage_dead(_18)

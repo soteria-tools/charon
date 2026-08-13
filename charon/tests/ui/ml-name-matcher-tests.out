@@ -156,7 +156,10 @@ pub opaque type Box<T>
 where
     TraitClause0: (T: MetaSized),
 
-struct (_, _)<A, B> {
+struct (_, _)<A, B>
+where
+    TraitClause0: (A: Sized),
+{
   A,
   B,
 }

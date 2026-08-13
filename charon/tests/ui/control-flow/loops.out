@@ -156,7 +156,10 @@ impl "impl_PartialOrd_u32_for_u32" PartialOrd<u32> for u32 {
     vtable: impl_PartialOrd_u32_for_u32::{vtable}
 }
 
-struct (_, _)<A, B> {
+struct (_, _)<A, B>
+where
+    TraitClause0: (A: Sized),
+{
   A,
   B,
 }

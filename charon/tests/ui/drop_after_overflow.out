@@ -16,6 +16,14 @@ pub fn from_str<'a>(_1: &'static str) -> Arguments<'a>
 #[lang_item(MetaSized)]
 pub trait MetaSized<Self>
 
+// Full name: core::marker::Sized
+#[lang_item(Sized)]
+pub trait Sized<Self>
+{
+    proof ImpliedClause0: (Self: MetaSized)
+    non-dyn-compatible
+}
+
 struct () {}
 
 // Full name: core::marker::Destruct
@@ -45,7 +53,10 @@ where
 pub fn _print<'_0>(_1: Arguments<'_0>)
 = <opaque>
 
-struct (_, _)<A, B> {
+struct (_, _)<A, B>
+where
+    TraitClause0: (A: Sized),
+{
   A,
   B,
 }

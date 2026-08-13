@@ -61,7 +61,10 @@ where
     TypeOutlives0: T: '_0,
 = <opaque>
 
-struct (_, _)<A, B> {
+struct (_, _)<A, B>
+where
+    TraitClause0: (A: Sized),
+{
   A,
   B,
 }
@@ -355,24 +358,24 @@ fn foo()
     let _14: u32; // anonymous local
     let a: [u32; 10usize]; // local
     let _16: (&'7 u32, &'8 u32); // anonymous local
-    let _17: &'9 u32; // anonymous local
+    let _17: &'11 u32; // anonymous local
     let _18: usize; // anonymous local
-    let _19: &'10 u32; // anonymous local
-    let left_val: &'11 u32; // local
-    let right_val: &'12 u32; // local
+    let _19: &'12 u32; // anonymous local
+    let left_val: &'13 u32; // local
+    let right_val: &'14 u32; // local
     let _22: bool; // anonymous local
     let _23: u32; // anonymous local
     let _24: u32; // anonymous local
     let kind: AssertKind; // local
     let _26: AssertKind; // anonymous local
-    let _27: &'13 u32; // anonymous local
-    let _28: &'14 u32; // anonymous local
-    let _29: &'15 u32; // anonymous local
-    let _30: &'16 u32; // anonymous local
-    let _31: Option<Arguments<'23>>[{built_in impl Sized for Arguments<'23>}]; // anonymous local
-    let _32: &'26 u32; // anonymous local
-    let _33: &'27 u32; // anonymous local
-    let _34: &'37 u32; // anonymous local
+    let _27: &'15 u32; // anonymous local
+    let _28: &'16 u32; // anonymous local
+    let _29: &'17 u32; // anonymous local
+    let _30: &'18 u32; // anonymous local
+    let _31: Option<Arguments<'25>>[{built_in impl Sized for Arguments<'25>}]; // anonymous local
+    let _32: &'28 u32; // anonymous local
+    let _33: &'29 u32; // anonymous local
+    let _34: &'41 u32; // anonymous local
     let _35: u32; // anonymous local
     let _36: &'_ [u32; 10usize]; // anonymous local
     let _37: &'_ u32; // anonymous local

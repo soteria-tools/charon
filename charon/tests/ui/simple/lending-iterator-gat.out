@@ -84,7 +84,10 @@ struct (_,)<A> {
   A,
 }
 
-struct (_, _)<A, B> {
+struct (_, _)<A, B>
+where
+    TraitClause0: (A: Sized),
+{
   A,
   B,
 }
@@ -497,27 +500,27 @@ pub fn main()
     let _7: closure<'14>; // anonymous local
     let _8: &'16 mut i32; // anonymous local
     let _9: (&'23 i32, &'24 i32); // anonymous local
-    let _10: &'25 i32; // anonymous local
-    let _11: &'26 i32; // anonymous local
-    let left_val: &'27 i32; // local
-    let right_val: &'28 i32; // local
+    let _10: &'27 i32; // anonymous local
+    let _11: &'28 i32; // anonymous local
+    let left_val: &'29 i32; // local
+    let right_val: &'30 i32; // local
     let _14: bool; // anonymous local
     let _15: i32; // anonymous local
     let _16: i32; // anonymous local
     let kind: AssertKind; // local
     let _18: AssertKind; // anonymous local
-    let _19: &'29 i32; // anonymous local
-    let _20: &'30 i32; // anonymous local
-    let _21: &'31 i32; // anonymous local
-    let _22: &'32 i32; // anonymous local
-    let _23: Option<Arguments<'39>>[{built_in impl Sized for Arguments<'39>}]; // anonymous local
-    let _24: &'42 i32; // anonymous local
-    let _25: &'43 i32; // anonymous local
-    let _26: &'44 i32; // anonymous local
-    let _27: &'99 i32; // anonymous local
-    let _28: &'109 i32; // anonymous local
+    let _19: &'31 i32; // anonymous local
+    let _20: &'32 i32; // anonymous local
+    let _21: &'33 i32; // anonymous local
+    let _22: &'34 i32; // anonymous local
+    let _23: Option<Arguments<'41>>[{built_in impl Sized for Arguments<'41>}]; // anonymous local
+    let _24: &'44 i32; // anonymous local
+    let _25: &'45 i32; // anonymous local
+    let _26: &'46 i32; // anonymous local
+    let _27: &'101 i32; // anonymous local
+    let _28: &'113 i32; // anonymous local
     let _29: i32; // anonymous local
-    let _30: &'110 i32; // anonymous local
+    let _30: &'114 i32; // anonymous local
     let _31: i32; // anonymous local
 
     storage_live(_26)
@@ -551,7 +554,7 @@ pub fn main()
     _8 = &mut sum
     _7 = closure { 0: move _8 }
     storage_dead(_8)
-    _5 = for_each<Option<&'59 i32>[{built_in impl Sized for &'59 i32}], closure<'61>>[{built_in impl Sized for Option<&'59 i32>[{built_in impl Sized for &'59 i32}]}, {built_in impl Sized for closure<'61>}, impl_LendingIterator_for_Option<'59, i32>[{built_in impl Sized for i32}], impl_FnMut_tuple_for_closure<'61, '97>](move _6, move _7)
+    _5 = for_each<Option<&'61 i32>[{built_in impl Sized for &'61 i32}], closure<'63>>[{built_in impl Sized for Option<&'61 i32>[{built_in impl Sized for &'61 i32}]}, {built_in impl Sized for closure<'63>}, impl_LendingIterator_for_Option<'61, i32>[{built_in impl Sized for i32}], impl_FnMut_tuple_for_closure<'63, '99>](move _6, move _7)
     ↳⚡ storage_dead(_25)
         storage_dead(_24)
         storage_dead(_23)

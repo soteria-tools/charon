@@ -33,6 +33,14 @@ where
 #[lang_item(MetaSized)]
 pub trait MetaSized<Self>
 
+// Full name: core::marker::Sized
+#[lang_item(Sized)]
+pub trait Sized<Self>
+{
+    proof ImpliedClause0: (Self: MetaSized)
+    non-dyn-compatible
+}
+
 // Full name: core::marker::StructuralPartialEq
 #[lang_item(StructuralPeq)]
 pub trait StructuralPartialEq<Self>
@@ -43,7 +51,10 @@ pub trait StructuralPartialEq<Self>
 
 struct () {}
 
-struct (_, _)<A, B> {
+struct (_, _)<A, B>
+where
+    TraitClause0: (A: Sized),
+{
   A,
   B,
 }
@@ -78,12 +89,12 @@ pub fn impl_PartialEq_Enum_for_Enum::eq<'_0, '_1>(self: &'_0 Enum, other: &'_1 E
     let _8: isize; // anonymous local
     let _9: isize; // anonymous local
     let _10: (&'11 Enum, &'12 Enum); // anonymous local
-    let _11: &'13 Enum; // anonymous local
-    let _12: &'14 Enum; // anonymous local
-    let __self_0: &'16 u8; // local
-    let __arg1_0: &'17 u8; // local
-    let _15: &'20 &'21 u8; // anonymous local
-    let _16: &'22 &'23 u8; // anonymous local
+    let _11: &'15 Enum; // anonymous local
+    let _12: &'16 Enum; // anonymous local
+    let __self_0: &'18 u8; // local
+    let __arg1_0: &'19 u8; // local
+    let _15: &'22 &'23 u8; // anonymous local
+    let _16: &'24 &'25 u8; // anonymous local
 
     storage_live(_0)
     storage_live(__self_discr)
@@ -138,7 +149,7 @@ pub fn impl_PartialEq_Enum_for_Enum::eq<'_0, '_1>(self: &'_0 Enum, other: &'_1 E
                     _15 = &__self_0
                     storage_live(_16)
                     _16 = &__arg1_0
-                    _0 = {impl PartialEq<&'_0 B> for &'_1 A}::eq<'34, '35, '38, '39, u8, u8>[impl_PartialEq_u8_for_u8](move _15, move _16)
+                    _0 = {impl PartialEq<&'_0 B> for &'_1 A}::eq<'38, '39, '42, '43, u8, u8>[impl_PartialEq_u8_for_u8](move _15, move _16)
                     ↳⚡ storage_dead(other)
                         storage_dead(self)
                         unwind_continue

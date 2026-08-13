@@ -192,13 +192,8 @@ impl<'tcx, 'ctx> ItemTransCtx<'tcx, 'ctx> {
                 TyKind::Slice(args.types.pop().unwrap())
             }
             hax::TyKind::Tuple(item_ref) => {
-                let mut tref: TypeDeclRef =
+                let tref: TypeDeclRef =
                     self.translate_item(span, item_ref, TransItemSourceKind::Type)?;
-                // hax gives the tuple item a `Sized` bound for each field but the last, that
-                // being Rust's rule for tuples. `translate_adt_def` drops those clauses from
-                // the declaration, so we drop the trait refs that answer them here too: a
-                // reference has to supply exactly the clauses its declaration asks for.
-                tref.generics.trait_refs.clear();
                 TyKind::Adt(tref, Some(BuiltinTy::Tuple))
             }
             hax::TyKind::Ref(region, ty, mutability) => {
@@ -808,9 +803,6 @@ impl<'tcx, 'ctx> ItemTransCtx<'tcx, 'ctx> {
             _ => None,
         };
         if let Some(tys) = synthetic_fields {
-            // hax gives these items `Sized` bounds so that rustc's queries work on them.
-            // We ignore them in our output, for now.
-            self.innermost_generics_mut().trait_clauses.clear();
             let fields = tys
                 .into_iter()
                 .map(|ty| Field {

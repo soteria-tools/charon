@@ -84,13 +84,13 @@ where
     TypeOutlives1: U: 'a,
 {
     let _0: (&'8 mut T, &'9 mut U); // return
-    let x: (&'10 mut T, &'11 mut U); // arg #1
-    let _2: (&'12 mut T, &'13 mut U); // anonymous local
+    let x: (&'12 mut T, &'13 mut U); // arg #1
+    let _2: (&'16 mut T, &'17 mut U); // anonymous local
 
     storage_live(_0)
     storage_live(_2)
     _2 = move x
-    _0 = test_crate::id::<(&_ mut _, &_ mut _)><'22, '23, T, U>[{built_in impl core::marker::Sized::<(&_ mut _, &_ mut _)><'22, '23, U> for T}](move _2)
+    _0 = test_crate::id::<(&_ mut _, &_ mut _)><'28, '29, T, U>[{built_in impl core::marker::Sized::<(&_ mut _, &_ mut _)><'28, '29, U> for T}](move _2)
     ↳⚡ storage_dead(x)
         unwind_continue
     storage_dead(_2)

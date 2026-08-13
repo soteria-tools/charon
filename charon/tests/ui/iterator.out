@@ -37,7 +37,10 @@ struct (_,)<A> {
   A,
 }
 
-struct (_, _)<A, B> {
+struct (_, _)<A, B>
+where
+    TraitClause0: (A: Sized),
+{
   A,
   B,
 }
@@ -5488,20 +5491,20 @@ fn main()
     let _42: i32; // anonymous local
     let expected: i32; // local
     let _44: (&'71 i32, &'72 i32); // anonymous local
-    let _45: &'73 i32; // anonymous local
-    let _46: &'74 i32; // anonymous local
-    let left_val: &'75 i32; // local
-    let right_val: &'76 i32; // local
+    let _45: &'75 i32; // anonymous local
+    let _46: &'76 i32; // anonymous local
+    let left_val: &'77 i32; // local
+    let right_val: &'78 i32; // local
     let _49: bool; // anonymous local
     let _50: i32; // anonymous local
     let _51: i32; // anonymous local
     let kind: AssertKind; // local
     let _53: AssertKind; // anonymous local
-    let _54: &'77 i32; // anonymous local
-    let _55: &'78 i32; // anonymous local
-    let _56: &'79 i32; // anonymous local
-    let _57: &'80 i32; // anonymous local
-    let _58: Option<Arguments<'87>>[{built_in impl Sized for Arguments<'87>}]; // anonymous local
+    let _54: &'79 i32; // anonymous local
+    let _55: &'80 i32; // anonymous local
+    let _56: &'81 i32; // anonymous local
+    let _57: &'82 i32; // anonymous local
+    let _58: Option<Arguments<'89>>[{built_in impl Sized for Arguments<'89>}]; // anonymous local
 
     storage_live(_0)
     storage_live(_12)
@@ -5532,7 +5535,7 @@ fn main()
         unwind_continue
     storage_dead(_5)
     _3 = impl_IntoIterator_for_T::into_iter<IntoIter<i32, 7usize>[{built_in impl Sized for i32}]>[{built_in impl Sized for IntoIter<i32, 7usize>[{built_in impl Sized for i32}]}, impl_Iterator_for_IntoIter<i32, 7usize>[{built_in impl Sized for i32}]](move _4)
-    ↳⚡ conditional_drop[drop_glue<'90, i32, 7usize>[{built_in impl Sized for i32}]] _4
+    ↳⚡ conditional_drop[drop_glue<'92, i32, 7usize>[{built_in impl Sized for i32}]] _4
         ↳⚡ storage_dead(_58)
             storage_dead(_57)
             storage_dead(_56)
@@ -5564,8 +5567,8 @@ fn main()
         storage_live(_9)
         _9 = &mut iter_6
         _8 = &two-phase-mut (*_9)
-        _7 = impl_Iterator_for_IntoIter::next<'92, i32, 7usize>[{built_in impl Sized for i32}](move _8)
-        ↳⚡ conditional_drop[drop_glue<'93, i32, 7usize>[{built_in impl Sized for i32}]] iter_6
+        _7 = impl_Iterator_for_IntoIter::next<'94, i32, 7usize>[{built_in impl Sized for i32}](move _8)
+        ↳⚡ conditional_drop[drop_glue<'95, i32, 7usize>[{built_in impl Sized for i32}]] iter_6
             ↳⚡ storage_dead(_58)
                 storage_dead(_57)
                 storage_dead(_56)
@@ -5577,7 +5580,7 @@ fn main()
                 storage_dead(_33)
                 storage_dead(_12)
                 unwind_terminate
-            conditional_drop[drop_glue<'94, i32, 7usize>[{built_in impl Sized for i32}]] _3
+            conditional_drop[drop_glue<'96, i32, 7usize>[{built_in impl Sized for i32}]] _3
             ↳⚡ storage_dead(_58)
                 storage_dead(_57)
                 storage_dead(_56)
@@ -5622,8 +5625,8 @@ fn main()
     }
     storage_dead(_9)
     storage_dead(_7)
-    conditional_drop[drop_glue<'95, i32, 7usize>[{built_in impl Sized for i32}]] iter_6
-    ↳⚡ conditional_drop[drop_glue<'94, i32, 7usize>[{built_in impl Sized for i32}]] _3
+    conditional_drop[drop_glue<'97, i32, 7usize>[{built_in impl Sized for i32}]] iter_6
+    ↳⚡ conditional_drop[drop_glue<'96, i32, 7usize>[{built_in impl Sized for i32}]] _3
         ↳⚡ storage_dead(_58)
             storage_dead(_57)
             storage_dead(_56)
@@ -5647,7 +5650,7 @@ fn main()
         storage_dead(_12)
         unwind_continue
     storage_dead(iter_6)
-    conditional_drop[drop_glue<'96, i32, 7usize>[{built_in impl Sized for i32}]] _3
+    conditional_drop[drop_glue<'98, i32, 7usize>[{built_in impl Sized for i32}]] _3
     ↳⚡ storage_dead(_58)
         storage_dead(_57)
         storage_dead(_56)
@@ -5668,7 +5671,7 @@ fn main()
     _15 = @ArrayToSliceShared<'_, i32, 7usize>(move _16)
     ↳⚡ undefined_behavior
     storage_dead(_16)
-    _14 = iter<'99, i32>[{built_in impl Sized for i32}](move _15)
+    _14 = iter<'101, i32>[{built_in impl Sized for i32}](move _15)
     ↳⚡ storage_dead(_58)
         storage_dead(_57)
         storage_dead(_56)
@@ -5681,7 +5684,7 @@ fn main()
         storage_dead(_12)
         unwind_continue
     storage_dead(_15)
-    _13 = impl_IntoIterator_for_T::into_iter<Iter<'101, i32>[{built_in impl Sized for i32}]>[{built_in impl Sized for Iter<'101, i32>[{built_in impl Sized for i32}]}, impl_Iterator_for_Iter<'101, i32>[{built_in impl Sized for i32}]](move _14)
+    _13 = impl_IntoIterator_for_T::into_iter<Iter<'103, i32>[{built_in impl Sized for i32}]>[{built_in impl Sized for Iter<'103, i32>[{built_in impl Sized for i32}]}, impl_Iterator_for_Iter<'103, i32>[{built_in impl Sized for i32}]](move _14)
     ↳⚡ storage_dead(_58)
         storage_dead(_57)
         storage_dead(_56)
@@ -5702,7 +5705,7 @@ fn main()
         storage_live(_20)
         _20 = &mut iter_17
         _19 = &two-phase-mut (*_20)
-        _18 = impl_Iterator_for_Iter::next<'110, '112, i32>[{built_in impl Sized for i32}](move _19)
+        _18 = impl_Iterator_for_Iter::next<'112, '114, i32>[{built_in impl Sized for i32}](move _19)
         ↳⚡ storage_dead(_58)
             storage_dead(_57)
             storage_dead(_56)
@@ -5729,7 +5732,7 @@ fn main()
         _23 = &two-phase-mut i
         storage_live(_24)
         _24 = copy v_21
-        _22 = add_assign<'117, '119>(move _23, move _24)
+        _22 = add_assign<'119, '121>(move _23, move _24)
         ↳⚡ storage_dead(_58)
             storage_dead(_57)
             storage_dead(_56)
@@ -5761,7 +5764,7 @@ fn main()
     _27 = @ArrayToSliceShared<'_, i32, 7usize>(move _28)
     ↳⚡ undefined_behavior
     storage_dead(_28)
-    _26 = chunks<'122, i32>[{built_in impl Sized for i32}](move _27, const 2usize)
+    _26 = chunks<'124, i32>[{built_in impl Sized for i32}](move _27, const 2usize)
     ↳⚡ storage_dead(_58)
         storage_dead(_57)
         storage_dead(_56)
@@ -5774,7 +5777,7 @@ fn main()
         storage_dead(_12)
         unwind_continue
     storage_dead(_27)
-    _25 = impl_IntoIterator_for_T::into_iter<Chunks<'124, i32>[{built_in impl Sized for i32}]>[{built_in impl Sized for Chunks<'124, i32>[{built_in impl Sized for i32}]}, impl_Iterator_for_Chunks<'124, i32>[{built_in impl Sized for i32}]](move _26)
+    _25 = impl_IntoIterator_for_T::into_iter<Chunks<'126, i32>[{built_in impl Sized for i32}]>[{built_in impl Sized for Chunks<'126, i32>[{built_in impl Sized for i32}]}, impl_Iterator_for_Chunks<'126, i32>[{built_in impl Sized for i32}]](move _26)
     ↳⚡ storage_dead(_58)
         storage_dead(_57)
         storage_dead(_56)
@@ -5795,7 +5798,7 @@ fn main()
         storage_live(_32)
         _32 = &mut iter_29
         _31 = &two-phase-mut (*_32)
-        _30 = impl_Iterator_for_Chunks::next<'133, '135, i32>[{built_in impl Sized for i32}](move _31)
+        _30 = impl_Iterator_for_Chunks::next<'135, '137, i32>[{built_in impl Sized for i32}](move _31)
         ↳⚡ storage_dead(_58)
             storage_dead(_57)
             storage_dead(_56)
@@ -5833,7 +5836,7 @@ fn main()
     _36 = @ArrayToSliceShared<'_, i32, 7usize>(move _37)
     ↳⚡ undefined_behavior
     storage_dead(_37)
-    _35 = chunks_exact<'138, i32>[{built_in impl Sized for i32}](move _36, const 2usize)
+    _35 = chunks_exact<'140, i32>[{built_in impl Sized for i32}](move _36, const 2usize)
     ↳⚡ storage_dead(_58)
         storage_dead(_57)
         storage_dead(_56)
@@ -5846,7 +5849,7 @@ fn main()
         storage_dead(_12)
         unwind_continue
     storage_dead(_36)
-    _34 = impl_IntoIterator_for_T::into_iter<ChunksExact<'140, i32>[{built_in impl Sized for i32}]>[{built_in impl Sized for ChunksExact<'140, i32>[{built_in impl Sized for i32}]}, impl_Iterator_for_ChunksExact<'140, i32>[{built_in impl Sized for i32}]](move _35)
+    _34 = impl_IntoIterator_for_T::into_iter<ChunksExact<'142, i32>[{built_in impl Sized for i32}]>[{built_in impl Sized for ChunksExact<'142, i32>[{built_in impl Sized for i32}]}, impl_Iterator_for_ChunksExact<'142, i32>[{built_in impl Sized for i32}]](move _35)
     ↳⚡ storage_dead(_58)
         storage_dead(_57)
         storage_dead(_56)
@@ -5867,7 +5870,7 @@ fn main()
         storage_live(_41)
         _41 = &mut iter_38
         _40 = &two-phase-mut (*_41)
-        _39 = impl_Iterator_for_ChunksExact::next<'149, '151, i32>[{built_in impl Sized for i32}](move _40)
+        _39 = impl_Iterator_for_ChunksExact::next<'151, '153, i32>[{built_in impl Sized for i32}](move _40)
         ↳⚡ storage_dead(_58)
             storage_dead(_57)
             storage_dead(_56)

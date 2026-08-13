@@ -37,7 +37,10 @@ impl "impl_Clone_for_i32" Clone for i32 {
 
 struct () {}
 
-struct (_, _)<A, B> {
+struct (_, _)<A, B>
+where
+    TraitClause0: (A: Sized),
+{
   A,
   B,
 }

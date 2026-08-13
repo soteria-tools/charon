@@ -101,7 +101,10 @@ where
     RegionOutlives0: 'f: '_1,
 = <opaque>
 
-struct (_, _)<A, B> {
+struct (_, _)<A, B>
+where
+    TraitClause0: (A: Sized),
+{
   A,
   B,
 }

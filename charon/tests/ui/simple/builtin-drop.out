@@ -87,7 +87,12 @@ impl "impl_Destruct_for_String" Destruct for String {
     non-dyn-compatible
 }
 
-struct (_, _)<A, B> {
+struct (_, _)<A, B>
+where
+    TraitClause0: (A: Sized),
+    TraitClause1: (A: Destruct),
+    TraitClause2: (B: Destruct),
+{
   A,
   B,
 }
