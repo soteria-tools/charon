@@ -4,11 +4,13 @@ use crate::hax;
 use crate::hax::SInto;
 use charon_lib::ast::*;
 use charon_lib::formatter::IntoFormatter;
+use charon_lib::ids::IndexVec;
 use charon_lib::options::ConstHandling;
 use charon_lib::pretty::FmtWithCtx;
 use derive_generic_visitor::Visitor;
 use itertools::Itertools;
 use rustc_span::sym;
+use std::convert::Infallible;
 use std::mem;
 use std::ops::ControlFlow;
 
@@ -1216,10 +1218,20 @@ impl<'tcx> ItemTransCtx<'tcx, '_> {
                                 );
                                 continue;
                             };
-                            bound_ty
+                            let mut assoc_ty = bound_ty
                                 .clone()
                                 .substitute_with_tref(&self_predicate)
-                                .map(|ty_decl: TraitAssocTy| ty_decl.default.unwrap())
+                                .map(|ty_decl: TraitAssocTy| ty_decl.default.unwrap());
+                            // Substituting `Self` with this impl turned the proofs of the trait's
+                            // implied clauses into self-referential trait refs; use the impl's own
+                            // proofs instead.
+                            resolve_self_proofs(
+                                &mut assoc_ty,
+                                &self_predicate.kind,
+                                &implied_trait_refs,
+                                &types,
+                            );
+                            assoc_ty
                         }
                     };
 
@@ -1401,4 +1413,68 @@ impl<'tcx> ItemTransCtx<'tcx, '_> {
             vtable: None,
         })
     }
+}
+
+/// Replace proofs that go through `Self`, where `Self` is proven by `self_kind`, with the
+/// corresponding proof of the impl:
+/// - `<Self as Trait>::ImpliedClause_i` becomes `implied_trait_refs[i]`
+/// - `<Self as Trait>::Type_j::Clause_i` becomes the matching proof in `assoc_tys[j]`
+fn resolve_self_proofs(
+    assoc_ty: &mut Binder<TraitAssocTyImpl>,
+    self_kind: &TraitRefKind,
+    implied_trait_refs: &IndexVec<TraitClauseId, TraitRef>,
+    assoc_tys: &IndexMap<AssocTypeId, Binder<TraitAssocTyImpl>>,
+) {
+    struct ResolveVisitor<'a> {
+        self_kind: &'a TraitRefKind,
+        implied_trait_refs: &'a IndexVec<TraitClauseId, TraitRef>,
+        assoc_tys: &'a IndexMap<AssocTypeId, Binder<TraitAssocTyImpl>>,
+        binder_depth: DeBruijnId,
+    }
+    impl ResolveVisitor<'_> {
+        /// Whether this ref is the reference to the impl we're translating
+        fn is_self(&self, tref: &TraitRef) -> bool {
+            tref.kind == self.self_kind.clone().move_under_binders(self.binder_depth)
+        }
+    }
+    impl Visitor for ResolveVisitor<'_> {
+        type Break = Infallible;
+    }
+    impl VisitorWithBinderDepth for ResolveVisitor<'_> {
+        fn binder_depth_mut(&mut self) -> &mut DeBruijnId {
+            &mut self.binder_depth
+        }
+    }
+    impl VisitAstMut for ResolveVisitor<'_> {
+        fn visit<T: AstVisitable>(&mut self, x: &mut T) -> ControlFlow<Self::Break> {
+            VisitWithBinderDepth::new(self).visit(x)
+        }
+        /// We proceed bottom-up so that nested self-references are resolved first.
+        fn exit_trait_ref(&mut self, tref: &mut TraitRef) {
+            let new_tref = match &tref.kind {
+                TraitRefKind::ParentClause(base, clause_id) if self.is_self(base) => {
+                    self.implied_trait_refs.get(*clause_id).cloned()
+                }
+                TraitRefKind::ItemClause(base, type_id, clause_id) if self.is_self(base) => self
+                    .assoc_tys
+                    .get(*type_id)
+                    // The proofs are stated under the associated type's binder, so we can only
+                    // use them if that binder binds nothing
+                    .and_then(|assoc_ty| assoc_ty.get_if_binds_nothing())
+                    .and_then(|assoc_ty| assoc_ty.implied_trait_refs.get(*clause_id).cloned()),
+                _ => return,
+            };
+            let Some(new_tref) = new_tref else { return };
+            // Note that the impl's proof for a clause can be that same clause, in which case this
+            // does nothing; such self-referential clauses can't be avoided.
+            *tref = new_tref.move_under_binders(self.binder_depth);
+        }
+    }
+    let _ = ResolveVisitor {
+        self_kind,
+        implied_trait_refs,
+        assoc_tys,
+        binder_depth: DeBruijnId::ZERO,
+    }
+    .visit(assoc_ty);
 }
