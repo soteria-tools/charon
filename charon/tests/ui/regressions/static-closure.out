@@ -76,6 +76,11 @@ pub trait Fn<Self, Args>
     vtable: core::ops::function::Fn::{vtable}
 }
 
+fn core::ops::function::Fn::{vtable}::<fn(i32), (i32,)>() -> core::ops::function::Fn::{vtable}
+= <opaque>
+
+static core::ops::function::Fn::{vtable}::<fn(i32), (i32,)>: core::ops::function::Fn::{vtable} = core::ops::function::Fn::{vtable}::<fn(i32), (i32,)>()
+
 // Full name: core::option::Option::<Arguments::<'_>>
 #[lang_item(Option)]
 #[diagnostic_item("Option")]
@@ -632,7 +637,7 @@ fn main()
     _4 = move _9
     _3 = &(*_4)
     _2 = &(*_3)
-    boo = unsize_cast<&'6 fn(i32), &'12 (dyn Fn<(i32,), ImpliedClause1::ImpliedClause1::Output = ()> + '13), &vtable_of({built_in impl Fn<(i32,)> for fn(i32)})>(move _2)
+    boo = unsize_cast<&'6 fn(i32), &'12 (dyn Fn<(i32,), ImpliedClause1::ImpliedClause1::Output = ()> + '13), &core::ops::function::Fn::{vtable}::<fn(i32), (i32,)>>(move _2)
     storage_dead(_2)
     fake_read(boo)
     set_type(typeof(boo) == &'14 (dyn Fn<(i32,), ImpliedClause1::ImpliedClause1::Output = ()> + '15))
