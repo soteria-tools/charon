@@ -63,7 +63,7 @@ impl<'tcx, 'tctx, 'ictx> BodyTransCtx<'tcx, 'tctx, 'ictx> {
             // `CanonicalUserTypeAnnotation::user_ty` is deliberately not folded when rustc
             // instantiates a MIR body, so do the item substitution explicitly.
             let item = item.clone();
-            let args = item.rustc_args(i_ctx.hax_state_with_id());
+            let args = item.rustc_args_for_def(i_ctx.hax_state_with_id());
             for annotation in &mut user_type_annotations {
                 annotation.user_ty.value = hax::substitute(
                     i_ctx.tcx,

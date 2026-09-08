@@ -252,6 +252,27 @@ impl ItemRef {
         s.with_global_cache(|cache| *cache.reverse_item_refs_map.get(self).unwrap())
     }
 
+    /// The rustc args to use to instantiate the *definition* of this item (e.g. its MIR body).
+    ///
+    /// This is the same as `rustc_args` except for closures, which have three extra synthetic generic params
+    /// after their parent params that aren't reflected in `ItemRef`. Definitions can however mention these
+    /// synthetic params (e.g. promoted constants and inline consts inside closures).
+    pub fn rustc_args_for_def<'tcx, S: UnderOwnerState<'tcx>>(
+        &self,
+        s: &S,
+    ) -> ty::GenericArgsRef<'tcx> {
+        let tcx = s.base().tcx;
+        let args = self.rustc_args(s);
+        if !matches!(self.def_id.kind, DefKind::Closure) {
+            return args;
+        }
+        let ty = inst_binder(tcx, s.typing_env(), Some(args), self.def_id.type_of(s));
+        let ty::TyKind::Closure(_, closure_args) = ty.kind() else {
+            unreachable!("`type_of` a closure is not a closure type: {ty:?}")
+        };
+        closure_args
+    }
+
     /// Mutate the `DefId`, keeping the same generic args.
     pub fn mutate_def_id<'tcx, S: BaseState<'tcx>>(
         &self,

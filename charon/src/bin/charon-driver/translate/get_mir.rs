@@ -41,7 +41,7 @@ impl<'tcx> ItemTransCtx<'tcx, '_> {
                 let s = self.hax_state_with_id();
                 Some(if self.monomorphize() {
                     let typing_env = s.typing_env();
-                    let args = item_ref.rustc_args(s);
+                    let args = item_ref.rustc_args_for_def(s);
                     hax::substitute(tcx, typing_env, Some(args), body)
                 } else {
                     body
