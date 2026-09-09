@@ -263,11 +263,20 @@ impl<'tcx> TranslateCtx<'tcx> {
                     }
                     // Trait implementation
                     hax::FullDefKind::TraitImpl { .. } => {
-                        let impl_id = {
-                            let item_src = TransItemSource::new(
-                                item.clone(),
-                                TransItemSourceKind::TraitImpl(TransImplSource::Normal),
-                            );
+                        let item_src = TransItemSource::new(
+                            item.clone(),
+                            TransItemSourceKind::TraitImpl(TransImplSource::Normal),
+                        );
+                        // A polymorphic impl reached in mono mode is one we're only naming: it
+                        // shows up when a nested item like `foo::precondition_check` is named
+                        // through the polymorphic `foo`. Give it an id but don't translate it,
+                        // or we pull in its whole polymorphic neighbourhood. Everything that
+                        // genuinely refers to an impl enqueues it itself.
+                        let impl_id = if self.options.monomorphize_with_hax
+                            && matches!(item, RustcItem::Poly(..))
+                        {
+                            self.register_no_enqueue(&None, &item_src).unwrap()
+                        } else {
                             self.register_and_enqueue(&None, item_src).unwrap()
                         };
                         ImplElem::Trait(impl_id)
