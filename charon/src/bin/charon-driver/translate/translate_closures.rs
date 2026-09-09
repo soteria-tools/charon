@@ -77,27 +77,21 @@ enum Callable<'a> {
 }
 
 impl<'a> Callable<'a> {
-    fn from_def(def: &'a hax::FullDef<'_>) -> Option<Self> {
+    /// `tupled_args_ty` is the item's tupled arguments, as built by
+    /// [`hax::FullDef::tupled_args_ty`]; the caller owns it so that a `Callable` stays a bundle of
+    /// references.
+    fn from_def(
+        def: &'a hax::FullDef<'_>,
+        tupled_args_ty: Option<&'a hax::Binder<hax::Ty>>,
+    ) -> Option<Self> {
         match def.kind() {
             hax::FullDefKind::Closure { args, .. } => Some(Callable::Closure(args)),
-            hax::FullDefKind::Fn {
-                sig,
-                tupled_args_ty,
-                ..
-            }
-            | hax::FullDefKind::AssocFn {
-                sig,
-                tupled_args_ty,
-                ..
-            }
-            | hax::FullDefKind::Ctor {
-                sig,
-                tupled_args_ty,
-                ..
-            } => Some(Callable::FnDef {
+            hax::FullDefKind::Fn { sig, .. }
+            | hax::FullDefKind::AssocFn { sig, .. }
+            | hax::FullDefKind::Ctor { sig, .. } => Some(Callable::FnDef {
                 item: def.this(),
                 sig,
-                tupled_args_ty: tupled_args_ty.as_ref()?,
+                tupled_args_ty: tupled_args_ty?,
             }),
             _ => None,
         }
@@ -720,7 +714,8 @@ impl<'tcx> ItemTransCtx<'tcx, '_> {
         target_kind: ClosureKind,
     ) -> Result<FunDecl, Error> {
         let span = item_meta.span;
-        let callable = Callable::from_def(def).unwrap();
+        let tupled_args_ty = def.tupled_args_ty(self.hax_state());
+        let callable = Callable::from_def(def, tupled_args_ty.as_ref()).unwrap();
 
         // Hax gives us trait-related information for the impl we're building.
         let vimpl = self.callable_fn_trait_impl(def, target_kind).unwrap();
@@ -772,7 +767,8 @@ impl<'tcx> ItemTransCtx<'tcx, '_> {
         target_kind: ClosureKind,
     ) -> Result<TraitImpl, Error> {
         let span = item_meta.span;
-        let callable = Callable::from_def(def).unwrap();
+        let tupled_args_ty = def.tupled_args_ty(self.hax_state());
+        let callable = Callable::from_def(def, tupled_args_ty.as_ref()).unwrap();
 
         // Hax gives us trait-related information for the impl we're building.
         let vimpl = self.callable_fn_trait_impl(def, target_kind).unwrap();

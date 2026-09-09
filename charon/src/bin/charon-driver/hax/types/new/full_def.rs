@@ -363,9 +363,6 @@ pub enum FullDefKind<'tcx> {
         param_env: ParamEnv,
         inline: InlineAttr,
         sig: PolyFnSig,
-        /// The arguments of this function, tupled as the `Fn*` traits take them, e.g. `(A, B, C)`.
-        /// Binds the same variables as `sig`. `None` if this function doesn't implement `Fn*`.
-        tupled_args_ty: Option<Binder<Ty>>,
         /// What's needed to construct this function's virtual `Fn*` impls, if compatible. Use
         /// [`FullDef::fn_trait_impl`] to build one.
         fn_trait_impls: Option<FnTraitImpls<'tcx>>,
@@ -382,9 +379,6 @@ pub enum FullDefKind<'tcx> {
         /// [`FullDef::vtable_sig`] to build it.
         vtable_sig: Option<VtableSig<'tcx>>,
         sig: PolyFnSig,
-        /// The arguments of this function, tupled as the `Fn*` traits take them, e.g. `(A, B, C)`.
-        /// Binds the same variables as `sig`. `None` if this function doesn't implement `Fn*`.
-        tupled_args_ty: Option<Binder<Ty>>,
         /// What's needed to construct this function's virtual `Fn*` impls, if compatible. Use
         /// [`FullDef::fn_trait_impl`] to build one.
         fn_trait_impls: Option<FnTraitImpls<'tcx>>,
@@ -456,9 +450,6 @@ pub enum FullDefKind<'tcx> {
         fields: IndexVec<FieldIdx, FieldDef>,
         output_ty: Ty,
         sig: PolyFnSig,
-        /// The arguments of this constructor, tupled as the `Fn*` traits take them, e.g. `(A, B,
-        /// C)`. Binds the same variables as `sig`. Always `Somes`.
-        tupled_args_ty: Option<Binder<Ty>>,
         /// What's needed to construct this constructor's virtual `Fn*` impls. Use
         /// [`FullDef::fn_trait_impl`] to build one.
         fn_trait_impls: Option<FnTraitImpls<'tcx>>,
@@ -771,9 +762,6 @@ where
             FullDefKind::Fn {
                 param_env: get_param_env(s, args),
                 inline: tcx.codegen_fn_attrs(def_id).inline.sinto(s),
-                tupled_args_ty: fn_trait_impls
-                    .is_some()
-                    .then(|| tupled_args_ty(s, sig).sinto(s)),
                 sig: sig.sinto(s),
                 fn_trait_impls,
             }
@@ -787,9 +775,6 @@ where
                 associated_item: AssocItem::sfrom_instantiated(s, &item, args),
                 inline: tcx.codegen_fn_attrs(def_id).inline.sinto(s),
                 vtable_sig: VtableSig::new(s, args),
-                tupled_args_ty: fn_trait_impls
-                    .is_some()
-                    .then(|| tupled_args_ty(s, sig).sinto(s)),
                 sig: sig.sinto(s),
                 fn_trait_impls,
             }
@@ -908,7 +893,6 @@ where
                 variant_id: variant_id.sinto(s),
                 fields,
                 output_ty,
-                tupled_args_ty: Some(tupled_args_ty(s, sig).sinto(s)),
                 sig: sig.sinto(s),
                 fn_trait_impls,
             }
@@ -1416,6 +1400,23 @@ impl<'tcx> FullDef<'tcx> {
         // Resolution happens in the context of the item itself, as it did when we built the
         // `FullDef`.
         Some(impls.build(&s.with_hax_owner(&self.this.def_id), kind))
+    }
+
+    /// The arguments of this function item, tupled as the `Fn*` traits take them, e.g.
+    /// `(A, B, C)`. Binds the same variables as the item's signature. `None` if this isn't a
+    /// function item or it doesn't implement the `Fn*` traits; for closures, use the
+    /// `tupled_args_ty` stored in [`ClosureArgs`] instead.
+    pub fn tupled_args_ty<S: BaseState<'tcx>>(&self, s: &S) -> Option<Binder<Ty>> {
+        let impls = match self.kind() {
+            FullDefKind::Fn { fn_trait_impls, .. }
+            | FullDefKind::AssocFn { fn_trait_impls, .. }
+            | FullDefKind::Ctor { fn_trait_impls, .. } => fn_trait_impls.as_ref()?,
+            _ => return None,
+        };
+        // Resolution happens in the context of the item itself, as it did when we built the
+        // `FullDef`.
+        let s = &s.with_hax_owner(&self.this.def_id);
+        Some(tupled_args_ty(s, impls.sig).sinto(s))
     }
 
     /// The signature this method has when called through a vtable, or `None` if this isn't a
