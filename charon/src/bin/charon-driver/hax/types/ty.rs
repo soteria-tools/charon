@@ -1013,15 +1013,44 @@ pub struct ReprFlags {
     pub is_simd: bool,
 }
 
-/// Reflects [`rustc_abi::Align`], but directly stores the number of bytes as a u64.
-
-#[derive(AdtInto, Clone, Debug, Hash, PartialEq, Eq)]
-#[args(<'tcx, S: BaseState<'tcx>>, from: rustc_abi::Align, state: S as _s)]
+/// Reflects [`rustc_abi::Align`]. An alignment is always a power of two, so we store the exponent
+/// rather than the byte count: that fits in a byte and leaves a niche, which keeps `Option<Align>`
+/// down to a single byte.
+#[derive(Clone, Copy, Hash, PartialEq, Eq)]
 pub struct Align {
-    #[value({
-        self.bytes()
-    })]
-    pub bytes: u64,
+    /// One more than the log2 of the alignment in bytes; the offset is what leaves the niche.
+    pow2_plus_one: std::num::NonZeroU8,
+}
+
+impl Align {
+    /// Build an alignment of `1 << pow2` bytes.
+    pub fn from_pow2(pow2: u8) -> Self {
+        Align {
+            pow2_plus_one: std::num::NonZeroU8::new(pow2 + 1).unwrap(),
+        }
+    }
+
+    /// The log2 of the alignment in bytes.
+    pub fn pow2(self) -> u8 {
+        self.pow2_plus_one.get() - 1
+    }
+
+    /// The alignment in bytes.
+    pub fn bytes(self) -> u64 {
+        1 << self.pow2()
+    }
+}
+
+impl std::fmt::Debug for Align {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        write!(f, "Align({} bytes)", self.bytes())
+    }
+}
+
+impl<'tcx, S: BaseState<'tcx>> SInto<S, Align> for rustc_abi::Align {
+    fn sinto(&self, _s: &S) -> Align {
+        Align::from_pow2(self.bytes().trailing_zeros() as u8)
+    }
 }
 
 /// The metadata to attach to the newly-unsized ptr.
