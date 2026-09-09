@@ -6,8 +6,13 @@ use rustc_middle::ty;
 use std::cell::{RefCell, RefMut};
 
 use crate::{
-    BoundsOptions, ItemId, ItemPredicates, PredicateSearcher, TraitProof, TraitProofContents,
+    AssocItemResolution, BoundsOptions, ItemId, ItemPredicates, ItemRef, PredicateSearcher,
+    TraitProof, TraitProofContents,
 };
+
+/// Identifies an item reference resolved in a context that can't influence the result; see
+/// [`ElaborationData::parameterless_item_refs`].
+type ParameterlessItemRef<'tcx, Id> = (Id, ty::GenericArgsRef<'tcx>, AssocItemResolution);
 
 mod intern {
     use rustc_data_structures::intern::Interned;
@@ -98,6 +103,11 @@ struct ElaborationData<'tcx, Id: ItemId = DefId> {
     trait_proofs: intern::TraitProofInterner<'tcx, Id>,
     trait_proofs_arena: TypedArena<TraitProofContents<'tcx, Id>>,
     predicate_searchers: RefCell<FxHashMap<Id, PredicateSearcher<'tcx, Id>>>,
+    /// References with no generic parameters, resolved by a searcher whose own clauses all have
+    /// parameters. Neither the clauses nor the typing environment can then affect the result, so
+    /// every such searcher gets the same answer and they share it rather than each resolving the
+    /// reference again. See `PredicateSearcher::resolves_parameterless_refs_the_same`.
+    parameterless_item_refs: RefCell<FxHashMap<ParameterlessItemRef<'tcx, Id>, ItemRef<'tcx, Id>>>,
     required_predicates: PredicateCache<'tcx, Id>,
     required_recursively_predicates: PredicateCache<'tcx, Id>,
     implied_predicates: PredicateCache<'tcx, Id>,
@@ -110,6 +120,7 @@ impl<'tcx, Id: ItemId> Default for ElaborationData<'tcx, Id> {
             trait_proofs: Default::default(),
             trait_proofs_arena: Default::default(),
             predicate_searchers: Default::default(),
+            parameterless_item_refs: Default::default(),
             required_predicates: Default::default(),
             required_recursively_predicates: Default::default(),
             implied_predicates: Default::default(),
@@ -202,6 +213,26 @@ impl<'tcx, Id: ItemId> ElaborationCtx<'tcx, Id> {
         RefMut::map(predicate_searchers, |predicate_searchers| {
             predicate_searchers.get_mut(&def_id).unwrap()
         })
+    }
+
+    /// Resolve a reference that has no generic parameters, reusing what another context that
+    /// can't influence the result already computed. See
+    /// [`ElaborationData::parameterless_item_refs`].
+    pub(crate) fn parameterless_item_ref(
+        &self,
+        key: ParameterlessItemRef<'tcx, Id>,
+        compute: impl FnOnce() -> ItemRef<'tcx, Id>,
+    ) -> ItemRef<'tcx, Id> {
+        if let Some(item_ref) = self.data.parameterless_item_refs.borrow().get(&key) {
+            return item_ref.clone();
+        }
+        // Careful: `compute` resolves other references, so we must not hold the borrow.
+        let item_ref = compute();
+        self.data
+            .parameterless_item_refs
+            .borrow_mut()
+            .insert(key, item_ref.clone());
+        item_ref
     }
 
     pub(crate) fn cached_required_predicates(

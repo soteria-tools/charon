@@ -689,16 +689,70 @@ impl Ty {
     }
 }
 
+/// Whether `owner` may use the shared `parameterless_tys` cache; see `Ty::sinto`. Only depends on
+/// the clauses the item has in scope, so we compute it once per item.
+fn shares_parameterless_tys<'tcx>(s: &impl UnderOwnerState<'tcx>, owner: &DefId) -> bool {
+    let shares =
+        s.with_predicate_searcher(|searcher, _| searcher.resolves_parameterless_refs_the_same());
+    s.with_global_cache(|cache| cache.shares_parameterless_tys.insert(owner.clone(), shares));
+    shares
+}
+
 impl<'tcx, S: UnderOwnerState<'tcx>> SInto<S, Ty> for rustc_middle::ty::Ty<'tcx> {
     fn sinto(&self, s: &S) -> Ty {
-        if let Some(ty) = s.with_cache(|cache| cache.tys.get(self).cloned()) {
+        use rustc_infer::infer::canonical::ir::TypeVisitableExt;
+        // Translating a type resolves the trait obligations of every item it mentions, which is the
+        // bulk of the cost. A type with no generic parameters can't resolve against the current
+        // item's clauses (see `resolves_parameterless_refs_the_same`), so all the items with that
+        // property get the same translation and can share it instead of each redoing the work.
+        let parameterless = !self.has_param();
+        let owner = s.owner();
+        // Take the cache once on the common path: whether we may share, and the type if we have it.
+        let (shares, cached) = s.with_global_cache(|cache| {
+            let shares = cache.shares_parameterless_tys.get(&owner).copied();
+            let cached = if parameterless && shares == Some(true) {
+                cache.parameterless_tys.get(self).cloned()
+            } else {
+                cache
+                    .per_item
+                    .entry(owner.clone())
+                    .or_default()
+                    .tys
+                    .get(self)
+                    .cloned()
+            };
+            (shares, cached)
+        });
+        if let Some(ty) = cached {
             return ty;
         }
+        let shared = parameterless
+            && match shares {
+                Some(shares) => shares,
+                // The first type we translate for this item; we didn't know yet whether it may
+                // share, so the lookup above went to the per-item cache.
+                None => {
+                    let shares = shares_parameterless_tys(s, &owner);
+                    if shares
+                        && let Some(ty) =
+                            s.with_global_cache(|cache| cache.parameterless_tys.get(self).cloned())
+                    {
+                        return ty;
+                    }
+                    shares
+                }
+            };
         let kind: TyKind = self.kind().sinto(s);
         let ty = Ty::new(s, kind);
-        s.with_cache(|cache| {
-            cache.tys.insert(*self, ty.clone());
-        });
+        if shared {
+            s.with_global_cache(|cache| {
+                cache.parameterless_tys.insert(*self, ty.clone());
+            });
+        } else {
+            s.with_cache(|cache| {
+                cache.tys.insert(*self, ty.clone());
+            });
+        }
         ty
     }
 }

@@ -108,6 +108,10 @@ pub struct PredicateSearcher<'tcx, Id: ItemId = DefId> {
     /// Whether we're in a trait declaration context where an implicit `Self: Trait` clause is
     /// accessible.
     implicit_self_clause: bool,
+    /// Whether every clause this context contributes mentions a generic parameter, so that a
+    /// reference with no parameters of its own can never resolve to one of them. See
+    /// [`Self::resolves_parameterless_refs_the_same`].
+    owner_clauses_are_generic: bool,
     /// Cache the `ItemRef` translations. This is fast because `GenericArgsRef` is interned.
     pub(crate) item_refs_cache:
         HashMap<(Id, ty::GenericArgsRef<'tcx>, AssocItemResolution), ItemRef<'tcx, Id>>,
@@ -116,6 +120,14 @@ pub struct PredicateSearcher<'tcx, Id: ItemId = DefId> {
 }
 
 impl<'tcx, Id: ItemId> PredicateSearcher<'tcx, Id> {
+    /// Whether two contexts with this property resolve a reference that has no generic parameters
+    /// identically. Clause lookup is by exact match, so a parameterless reference can only match a
+    /// parameterless clause; if the owner contributed none, only impls can apply, and those don't
+    /// depend on the context. Lets callers share such resolutions between items.
+    pub fn resolves_parameterless_refs_the_same(&self) -> bool {
+        self.owner_clauses_are_generic
+    }
+
     /// Initialize the elaborator with the predicates accessible within this item.
     pub fn new_for_owner(
         elab_ctx: ElaborationCtx<'tcx, Id>,
@@ -128,6 +140,7 @@ impl<'tcx, Id: ItemId> PredicateSearcher<'tcx, Id> {
             typing_env: TypingEnv::new(owner_id.param_env(state), TypingMode::PostAnalysis),
             candidates: Default::default(),
             implicit_self_clause: initial_self_pred.is_some(),
+            owner_clauses_are_generic: false,
             item_refs_cache: Default::default(),
             trait_proofs_cache: Default::default(),
         };
@@ -142,6 +155,10 @@ impl<'tcx, Id: ItemId> PredicateSearcher<'tcx, Id> {
             state,
             ItemPredicates::required_recursively(elab_ctx, state, owner_id).predicates,
         );
+        // Record this before `resolve` starts adding candidates: what it adds is derived from the
+        // reference being resolved rather than from the owner, so it doesn't affect the property.
+        out.owner_clauses_are_generic =
+            !out.implicit_self_clause && out.candidates.keys().all(|pred| pred.has_param());
         out
     }
 
@@ -182,6 +199,8 @@ impl<'tcx, Id: ItemId> PredicateSearcher<'tcx, Id> {
         let predicates = ItemPredicates::new_unmapped(DUMMY_SP, predicates);
 
         let mut searcher = self.clone();
+        // The `dyn` predicates are clauses of this context, so the property no longer holds.
+        searcher.owner_clauses_are_generic = false;
         searcher.insert_bound_predicates(state, predicates.iter());
         searcher.typing_env.param_env = param_env_from_clauses(
             tcx,

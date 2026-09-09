@@ -96,6 +96,11 @@ mod types {
         pub reverse_item_refs_map: HashMap<ItemRef, ty::GenericArgsRef<'tcx>>,
         /// Data for synthetic items. See the `synthetic_items` module.
         pub synthetic_item_data: HashMap<SyntheticItem, SyntheticItemData<'tcx>>,
+        /// Types translated from a context that can't influence the result, shared between all
+        /// such contexts. See `Ty::sinto`.
+        pub parameterless_tys: HashMap<ty::Ty<'tcx>, Ty>,
+        /// Which items may use `parameterless_tys`; see `Ty::sinto`.
+        pub shares_parameterless_tys: HashMap<DefId, bool>,
         /// Cached names and disambiguators for crate names.
         pub disambiguated_crate_names: Option<FxHashMap<CrateNum, (Symbol, u32)>>,
     }

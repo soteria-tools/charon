@@ -194,8 +194,22 @@ impl<'tcx, Id: ItemId> PredicateSearcher<'tcx, Id> {
         if let Some(entry) = self.item_refs_cache.get(&key) {
             return entry.clone();
         }
-        let item_ref =
-            self.resolve_item_reference_uncached(state, def_id, generics, assoc_item_resolution);
+        let item_ref = {
+            use rustc_infer::infer::canonical::ir::TypeVisitableExt;
+            if self.resolves_parameterless_refs_the_same() && !generics.has_param() {
+                let elab_ctx = self.elab_ctx;
+                elab_ctx.parameterless_item_ref(key.clone(), || {
+                    self.resolve_item_reference_uncached(
+                        state,
+                        def_id,
+                        generics,
+                        assoc_item_resolution,
+                    )
+                })
+            } else {
+                self.resolve_item_reference_uncached(state, def_id, generics, assoc_item_resolution)
+            }
+        };
         self.item_refs_cache.insert(key, item_ref.clone());
         item_ref
     }
