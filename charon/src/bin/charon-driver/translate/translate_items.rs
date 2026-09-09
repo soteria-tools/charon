@@ -869,9 +869,15 @@ impl<'tcx> ItemTransCtx<'tcx, '_> {
                         self.translate_item_meta(&item_def, &item_src, method_name, method_opacity);
                     // By default we only enqueue required methods (those that don't have a default
                     // impl). If the trait is transparent, we enqueue all its methods.
+                    //
+                    // In mono mode we don't do either: every call site names a concrete callee, so
+                    // a method gets marked used exactly when something calls it or stores it in a
+                    // vtable. Being eager here instead pulls in each method's whole sibling set,
+                    // which snowballs: asking for `SliceIndex::get_unchecked_mut` also translates
+                    // `SliceIndex::index`, hence its panic path, hence all of `core::fmt`.
                     if self.options.translate_all_methods
-                        || item_meta.opacity.is_transparent()
-                        || !hax_item.has_value
+                        || (!self.t_ctx.options.monomorphize_with_hax
+                            && (item_meta.opacity.is_transparent() || !hax_item.has_value))
                     {
                         self.mark_method_as_used(trait_decl_id, trait_method_id);
                     }
@@ -1163,7 +1169,11 @@ impl<'tcx> ItemTransCtx<'tcx, '_> {
                         Some(value) => {
                             // By default we only enqueue required methods (those that don't have a default
                             // impl). If the impl is transparent, we enqueue all the implemented methods.
-                            if item_meta.opacity.is_transparent() {
+                            // In mono mode we let demand drive this instead; see the comment in
+                            // `translate_trait_decl`.
+                            if item_meta.opacity.is_transparent()
+                                && !self.t_ctx.options.monomorphize_with_hax
+                            {
                                 self.mark_method_as_used(trait_id, trait_method_id);
                             }
                             self.translate_item_binder(
