@@ -369,12 +369,9 @@ pub enum FullDefKind<'tcx> {
         /// The arguments of this function, tupled as the `Fn*` traits take them, e.g. `(A, B, C)`.
         /// Binds the same variables as `sig`. `None` if this function doesn't implement `Fn*`.
         tupled_args_ty: Option<Binder<Ty>>,
-        /// Info required to construct a virtual `FnOnce` impl for this function, if compatible.
-        fn_once_impl: Option<Box<VirtualTraitImpl>>,
-        /// Info required to construct a virtual `FnMut` impl for this function, if compatible.
-        fn_mut_impl: Option<Box<VirtualTraitImpl>>,
-        /// Info required to construct a virtual `Fn` impl for this function, if compatible.
-        fn_impl: Option<Box<VirtualTraitImpl>>,
+        /// What's needed to construct this function's virtual `Fn*` impls, if compatible. Use
+        /// [`FullDef::fn_trait_impl`] to build one.
+        fn_trait_impls: Option<FnTraitImpls<'tcx>>,
     },
     /// Associated function: `impl MyStruct { fn associated() {} }` or `trait Foo { fn associated()
     /// {} }`
@@ -391,12 +388,9 @@ pub enum FullDefKind<'tcx> {
         /// The arguments of this function, tupled as the `Fn*` traits take them, e.g. `(A, B, C)`.
         /// Binds the same variables as `sig`. `None` if this function doesn't implement `Fn*`.
         tupled_args_ty: Option<Binder<Ty>>,
-        /// Info required to construct a virtual `FnOnce` impl for this function, if compatible.
-        fn_once_impl: Option<Box<VirtualTraitImpl>>,
-        /// Info required to construct a virtual `FnMut` impl for this function, if compatible.
-        fn_mut_impl: Option<Box<VirtualTraitImpl>>,
-        /// Info required to construct a virtual `Fn` impl for this function, if compatible.
-        fn_impl: Option<Box<VirtualTraitImpl>>,
+        /// What's needed to construct this function's virtual `Fn*` impls, if compatible. Use
+        /// [`FullDef::fn_trait_impl`] to build one.
+        fn_trait_impls: Option<FnTraitImpls<'tcx>>,
     },
     /// A closure, coroutine, or coroutine-closure.
     Closure {
@@ -475,12 +469,9 @@ pub enum FullDefKind<'tcx> {
         /// The arguments of this constructor, tupled as the `Fn*` traits take them, e.g. `(A, B,
         /// C)`. Binds the same variables as `sig`. Always `Somes`.
         tupled_args_ty: Option<Binder<Ty>>,
-        /// Info required to construct a virtual `FnOnce` impl for this constructor.
-        fn_once_impl: Option<Box<VirtualTraitImpl>>,
-        /// Info required to construct a virtual `FnMut` impl for this constructor.
-        fn_mut_impl: Option<Box<VirtualTraitImpl>>,
-        /// Info required to construct a virtual `Fn` impl for this constructor.
-        fn_impl: Option<Box<VirtualTraitImpl>>,
+        /// What's needed to construct this constructor's virtual `Fn*` impls. Use
+        /// [`FullDef::fn_trait_impl`] to build one.
+        fn_trait_impls: Option<FnTraitImpls<'tcx>>,
     },
     /// A field in a struct, enum or union. e.g.
     /// - `bar` in `struct Foo { bar: u8 }`
@@ -616,30 +607,12 @@ where
     let type_of_self = || inst_binder(tcx, s.typing_env(), args, hax_def_id.type_of(s));
     let args_or_default = || args.unwrap_or_else(|| hax_def_id.identity_args(s));
     let fn_def_trait_impls = |def_id: RDefId, fn_sig: ty::PolyFnSig<'tcx>| {
-        if fn_sig.is_fn_trait_compatible()
-            && tcx.codegen_fn_attrs(def_id).target_features.is_empty()
-        {
-            let fn_args = args_or_default();
-            let self_ty = ty::Ty::new_fn_def(tcx, def_id, fn_sig.rebind(fn_args));
-            let fn_sig = tcx.liberate_late_bound_regions(def_id, fn_sig);
-            let input_ty = ty::Ty::new_tup(tcx, fn_sig.inputs());
-            let trait_args = [self_ty, input_ty];
-
-            let fn_once_trait = tcx.lang_items().fn_once_trait().unwrap();
-            let fn_mut_trait = tcx.lang_items().fn_mut_trait().unwrap();
-            let fn_trait = tcx.lang_items().fn_trait().unwrap();
-
-            let fn_once_tref = ty::TraitRef::new(tcx, fn_once_trait, trait_args);
-            let fn_mut_tref = ty::TraitRef::new(tcx, fn_mut_trait, trait_args);
-            let fn_tref = ty::TraitRef::new(tcx, fn_trait, trait_args);
-            Some((
-                virtual_impl_for(s, fn_once_tref),
-                virtual_impl_for(s, fn_mut_tref),
-                virtual_impl_for(s, fn_tref),
-            ))
-        } else {
-            None
-        }
+        (fn_sig.is_fn_trait_compatible() && tcx.codegen_fn_attrs(def_id).target_features.is_empty())
+            .then(|| FnTraitImpls {
+                def_id,
+                sig: fn_sig,
+                args: args_or_default(),
+            })
     };
     match get_def_kind(tcx, def_id) {
         RDefKind::Struct { .. } | RDefKind::Union { .. } | RDefKind::Enum { .. } => {
@@ -851,9 +824,7 @@ where
                     .is_some()
                     .then(|| tupled_args_ty(s, sig).sinto(s)),
                 sig: sig.sinto(s),
-                fn_once_impl: fn_trait_impls.as_ref().map(|(vimpl, _, _)| vimpl.clone()),
-                fn_mut_impl: fn_trait_impls.as_ref().map(|(_, vimpl, _)| vimpl.clone()),
-                fn_impl: fn_trait_impls.map(|(_, _, vimpl)| vimpl),
+                fn_trait_impls,
             }
         }
         RDefKind::AssocFn { .. } => {
@@ -870,9 +841,7 @@ where
                     .is_some()
                     .then(|| tupled_args_ty(s, sig).sinto(s)),
                 sig: sig.sinto(s),
-                fn_once_impl: fn_trait_impls.as_ref().map(|(vimpl, _, _)| vimpl.clone()),
-                fn_mut_impl: fn_trait_impls.as_ref().map(|(_, vimpl, _)| vimpl.clone()),
-                fn_impl: fn_trait_impls.map(|(_, _, vimpl)| vimpl),
+                fn_trait_impls,
             }
         }
         RDefKind::Closure { .. } => {
@@ -1000,9 +969,7 @@ where
                 output_ty,
                 tupled_args_ty: Some(tupled_args_ty(s, sig).sinto(s)),
                 sig: sig.sinto(s),
-                fn_once_impl: fn_trait_impls.as_ref().map(|(vimpl, _, _)| vimpl.clone()),
-                fn_mut_impl: fn_trait_impls.as_ref().map(|(_, vimpl, _)| vimpl.clone()),
-                fn_impl: fn_trait_impls.map(|(_, _, vimpl)| vimpl),
+                fn_trait_impls,
             }
         }
         RDefKind::Field => FullDefKind::Field,
@@ -1349,6 +1316,58 @@ fn get_trait_decl_dyn_self_ty<'tcx, S: UnderOwnerState<'tcx>>(
             ty
         }
     })
+}
+
+/// What a function item needs to build its virtual `Fn`/`FnMut`/`FnOnce` impls. Building one
+/// requires trait resolution, and only the few items actually used as a closure ever need it, so we
+/// keep the ingredients and build on demand; see [`FullDef::fn_trait_impl`]. Closures are the
+/// exception: they always implement `Fn*`, so their impls are stored directly in
+/// [`FullDefKind::Closure`].
+#[derive(Clone, Debug)]
+pub struct FnTraitImpls<'tcx> {
+    def_id: RDefId,
+    /// The signature of the item, instantiated with `args`.
+    sig: ty::PolyFnSig<'tcx>,
+    /// The item's generic arguments, or its identity args if it wasn't instantiated.
+    args: ty::GenericArgsRef<'tcx>,
+}
+
+impl<'tcx> FnTraitImpls<'tcx> {
+    fn build<S: UnderOwnerState<'tcx>>(&self, s: &S, kind: ClosureKind) -> Box<VirtualTraitImpl> {
+        let tcx = s.base().tcx;
+        let self_ty = ty::Ty::new_fn_def(tcx, self.def_id, self.sig.rebind(self.args));
+        let liberated_sig = tcx.liberate_late_bound_regions(self.def_id, self.sig);
+        let input_ty = ty::Ty::new_tup(tcx, liberated_sig.inputs());
+        let lang_items = tcx.lang_items();
+        let trait_id = match kind {
+            ClosureKind::Fn => lang_items.fn_trait(),
+            ClosureKind::FnMut => lang_items.fn_mut_trait(),
+            ClosureKind::FnOnce => lang_items.fn_once_trait(),
+        }
+        .unwrap();
+        virtual_impl_for(s, ty::TraitRef::new(tcx, trait_id, [self_ty, input_ty]))
+    }
+}
+
+impl<'tcx> FullDef<'tcx> {
+    /// The virtual impl of the given `Fn*` trait for this function item, or `None` if it isn't a
+    /// function item or doesn't implement the `Fn*` traits. For closures, use the impls stored in
+    /// [`FullDefKind::Closure`] instead.
+    pub fn fn_trait_impl<S: BaseState<'tcx>>(
+        &self,
+        s: &S,
+        kind: ClosureKind,
+    ) -> Option<Box<VirtualTraitImpl>> {
+        let impls = match self.kind() {
+            FullDefKind::Fn { fn_trait_impls, .. }
+            | FullDefKind::AssocFn { fn_trait_impls, .. }
+            | FullDefKind::Ctor { fn_trait_impls, .. } => fn_trait_impls.as_ref()?,
+            _ => return None,
+        };
+        // Resolution happens in the context of the item itself, as it did when we built the
+        // `FullDef`.
+        Some(impls.build(&s.with_hax_owner(&self.this.def_id), kind))
+    }
 }
 
 /// Do the trait resolution necessary to create a new impl for the given trait_ref. Used when we

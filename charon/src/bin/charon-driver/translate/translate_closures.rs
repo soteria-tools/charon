@@ -57,6 +57,14 @@ pub fn translate_closure_kind(kind: &hax::ClosureKind) -> ClosureKind {
     }
 }
 
+fn hax_closure_kind(kind: ClosureKind) -> hax::ClosureKind {
+    match kind {
+        ClosureKind::Fn => hax::ClosureKind::Fn,
+        ClosureKind::FnMut => hax::ClosureKind::FnMut,
+        ClosureKind::FnOnce => hax::ClosureKind::FnOnce,
+    }
+}
+
 #[derive(Clone, Copy)]
 enum Callable<'a> {
     Closure(&'a hax::ClosureArgs),
@@ -69,6 +77,32 @@ enum Callable<'a> {
 }
 
 impl<'a> Callable<'a> {
+    fn from_def(def: &'a hax::FullDef<'_>) -> Option<Self> {
+        match def.kind() {
+            hax::FullDefKind::Closure { args, .. } => Some(Callable::Closure(args)),
+            hax::FullDefKind::Fn {
+                sig,
+                tupled_args_ty,
+                ..
+            }
+            | hax::FullDefKind::AssocFn {
+                sig,
+                tupled_args_ty,
+                ..
+            }
+            | hax::FullDefKind::Ctor {
+                sig,
+                tupled_args_ty,
+                ..
+            } => Some(Callable::FnDef {
+                item: def.this(),
+                sig,
+                tupled_args_ty: tupled_args_ty.as_ref()?,
+            }),
+            _ => None,
+        }
+    }
+
     fn item(self) -> &'a hax::ItemRef {
         match self {
             Callable::Closure(args) => &args.item,
@@ -93,80 +127,34 @@ impl<'a> Callable<'a> {
     }
 }
 
-#[derive(Clone, Copy)]
-struct CallableFnImpls<'a> {
-    callable: Callable<'a>,
-    fn_once_impl: Option<&'a hax::VirtualTraitImpl>,
-    fn_mut_impl: Option<&'a hax::VirtualTraitImpl>,
-    fn_impl: Option<&'a hax::VirtualTraitImpl>,
-}
-
-impl<'a> CallableFnImpls<'a> {
-    fn from_def(def: &'a hax::FullDef<'_>) -> Option<Self> {
-        match def.kind() {
-            hax::FullDefKind::Closure {
-                args,
-                fn_once_impl,
-                fn_mut_impl,
-                fn_impl,
-                ..
-            } => Some(Self {
-                callable: Callable::Closure(args),
-                fn_once_impl: Some(fn_once_impl),
-                fn_mut_impl: fn_mut_impl.as_deref(),
-                fn_impl: fn_impl.as_deref(),
-            }),
-            hax::FullDefKind::Fn {
-                sig,
-                tupled_args_ty,
-                fn_once_impl,
-                fn_mut_impl,
-                fn_impl,
-                ..
-            }
-            | hax::FullDefKind::AssocFn {
-                sig,
-                tupled_args_ty,
-                fn_once_impl,
-                fn_mut_impl,
-                fn_impl,
-                ..
-            }
-            | hax::FullDefKind::Ctor {
-                sig,
-                tupled_args_ty,
-                fn_once_impl,
-                fn_mut_impl,
-                fn_impl,
-                ..
-            } => Some(Self {
-                callable: Callable::FnDef {
-                    item: def.this(),
-                    sig,
-                    tupled_args_ty: tupled_args_ty.as_ref()?,
-                },
-                fn_once_impl: fn_once_impl.as_deref(),
-                fn_mut_impl: fn_mut_impl.as_deref(),
-                fn_impl: fn_impl.as_deref(),
-            }),
-            _ => None,
-        }
-    }
-
-    fn vimpl(self, target_kind: ClosureKind) -> Option<&'a hax::VirtualTraitImpl> {
-        match target_kind {
-            ClosureKind::FnOnce => self.fn_once_impl,
-            ClosureKind::FnMut => self.fn_mut_impl,
-            ClosureKind::Fn => self.fn_impl,
-        }
-    }
-}
-
 /// References to callable items are subtle because there are three sources of lifetimes on top of
 /// the normal generics: closure upvars, the higher-kindedness of the callable itself, and the
 /// late-bound generics of the `call`/`call_mut` methods. One must be careful to choose the right
 /// method from these.
 impl<'tcx> ItemTransCtx<'tcx, '_> {
+    /// The virtual `Fn*` impl of the given kind for this callable item. A closure stores its impls
+    /// in its `FullDef`; a function item builds them on demand, as the trait resolution they need
+    /// is only ever useful for the items we reach here.
+    fn callable_fn_trait_impl(
+        &self,
+        def: &hax::FullDef<'tcx>,
+        target_kind: ClosureKind,
+    ) -> Option<Box<hax::VirtualTraitImpl>> {
+        match def.kind() {
+            hax::FullDefKind::Closure {
+                fn_once_impl,
+                fn_mut_impl,
+                fn_impl,
+                ..
+            } => match target_kind {
+                ClosureKind::FnOnce => Some(fn_once_impl.clone()),
+                ClosureKind::FnMut => fn_mut_impl.clone(),
+                ClosureKind::Fn => fn_impl.clone(),
+            },
+            _ => def.fn_trait_impl(self.hax_state(), hax_closure_kind(target_kind)),
+        }
+    }
+
     /// Translate a reference to a callable item that takes late-bound lifetimes. The binder binds
     /// the late-bound lifetimes of the callable itself, if it is higher-kinded.
     fn translate_callable_bound_ref_with_late_bound(
@@ -732,11 +720,11 @@ impl<'tcx> ItemTransCtx<'tcx, '_> {
         target_kind: ClosureKind,
     ) -> Result<FunDecl, Error> {
         let span = item_meta.span;
-        let callable_impls = CallableFnImpls::from_def(def).unwrap();
-        let callable = callable_impls.callable;
+        let callable = Callable::from_def(def).unwrap();
 
         // Hax gives us trait-related information for the impl we're building.
-        let vimpl = callable_impls.vimpl(target_kind).unwrap();
+        let vimpl = self.callable_fn_trait_impl(def, target_kind).unwrap();
+        let vimpl = &*vimpl;
         let implemented_trait = self.translate_trait_predicate(span, &vimpl.trait_pred)?;
         let method_id = self.translate_trait_method_id(implemented_trait.id, &vimpl.methods[0])?;
 
@@ -784,11 +772,11 @@ impl<'tcx> ItemTransCtx<'tcx, '_> {
         target_kind: ClosureKind,
     ) -> Result<TraitImpl, Error> {
         let span = item_meta.span;
-        let callable_impls = CallableFnImpls::from_def(def).unwrap();
-        let callable = callable_impls.callable;
+        let callable = Callable::from_def(def).unwrap();
 
         // Hax gives us trait-related information for the impl we're building.
-        let vimpl = callable_impls.vimpl(target_kind).unwrap();
+        let vimpl = self.callable_fn_trait_impl(def, target_kind).unwrap();
+        let vimpl = &*vimpl;
         let mut timpl = self.translate_virtual_trait_impl(
             def_id,
             item_meta,
