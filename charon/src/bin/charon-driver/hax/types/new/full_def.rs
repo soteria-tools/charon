@@ -350,7 +350,8 @@ pub enum FullDefKind<'tcx> {
         /// ```
         implied_trait_proofs: Vec<TraitProof>,
         /// Associated items, in the order of the trait declaration. Includes defaulted items.
-        items: Vec<ImplAssocItem>,
+        /// Use [`FullDef::trait_impl_items`] to build these.
+        items: TraitImplItems<'tcx>,
     },
     InherentImpl {
         param_env: ParamEnv,
@@ -695,7 +696,6 @@ where
             dyn_self: get_trait_decl_dyn_self_ty(s, args).sinto(s),
         },
         RDefKind::Impl { of_trait, .. } => {
-            use std::collections::HashMap;
             let param_env = get_param_env(s, args);
             if !of_trait {
                 let items = tcx
@@ -729,86 +729,17 @@ where
                 let required_trait_proofs =
                     solve_item_implied_traits(s, trait_ref.def_id, trait_ref.args);
 
-                let mut item_map: HashMap<RDefId, _> = tcx
-                    .associated_items(def_id)
-                    .in_definition_order()
-                    .map(|assoc| (assoc.trait_item_def_id().unwrap(), assoc))
-                    .collect();
-                let items = tcx
-                    .associated_items(trait_ref.def_id)
-                    .in_definition_order()
-                    .map(|decl_assoc| {
-                        let decl_def_id = decl_assoc.def_id;
-                        let trait_impl_id = def_id;
-                        let value = match item_map.remove(&decl_def_id) {
-                            Some(impl_assoc) => {
-                                let impl_assoc_def_id: DefId = impl_assoc.def_id.sinto(s);
-                                let virtual_item = VirtualImplAssocItem::new(
-                                    trait_impl_id,
-                                    decl_def_id,
-                                    impl_assoc.def_id,
-                                );
-                                let virtual_item_def_id =
-                                    DefId::make_assoc_item_impl(s, virtual_item);
-                                let s = &s.with_hax_owner(&virtual_item_def_id);
-                                let item_decl_args =
-                                    virtual_item.args_for_item_decl(s, trait_ref.args);
-                                let item_impl_args =
-                                    virtual_item.args_for_item_impl(s, args_or_default());
-                                let assoc_ty_value =
-                                    if matches!(decl_assoc.kind, ty::AssocKind::Type { .. }) {
-                                        let ty = inst_binder(
-                                            tcx,
-                                            s.typing_env(),
-                                            Some(item_impl_args),
-                                            impl_assoc_def_id.type_of(s),
-                                        );
-                                        Some(ty.sinto(s))
-                                    } else {
-                                        None
-                                    };
-                                let required_trait_proofs =
-                                    solve_item_implied_traits(s, decl_def_id, item_decl_args);
-                                let param_env = {
-                                    // Pass `None` to get the generics, but add the known parent.
-                                    // FIXME: maybe a custom enum instead of `Option<Args>`.
-                                    let mut param_env = get_param_env(s, None);
-                                    param_env.generics.parent = Some(this.def_id.clone());
-                                    param_env.parent = Some(this.clone());
-                                    param_env
-                                };
-                                let item = ItemRef::translate(s, impl_assoc.def_id, item_impl_args);
-                                let late_bound =
-                                    late_bound_for_def(s, impl_assoc.def_id, Some(item_impl_args));
-                                let value = ImplAssocItemValue {
-                                    item,
-                                    assoc_ty_value,
-                                    implied_trait_proofs: required_trait_proofs,
-                                };
-                                Some(TraitItemBinder {
-                                    def_id: virtual_item_def_id,
-                                    param_env,
-                                    late_bound,
-                                    skip_binder: value,
-                                })
-                            }
-                            None => None,
-                        };
-
-                        ImplAssocItem {
-                            name: decl_assoc.opt_name().sinto(s),
-                            value,
-                            decl_def_id: decl_def_id.sinto(s),
-                        }
-                    })
-                    .collect();
-                assert!(item_map.is_empty());
                 FullDefKind::TraitImpl {
                     param_env,
                     trait_pred,
                     dyn_self,
                     implied_trait_proofs: required_trait_proofs,
-                    items,
+                    items: TraitImplItems {
+                        def_id,
+                        trait_ref,
+                        args: args_or_default(),
+                        this: this.clone(),
+                    },
                 }
             }
         }
@@ -1242,8 +1173,11 @@ impl<'tcx> FullDef<'tcx> {
                 .iter()
                 .filter_map(|item| Some((item.name?, item.def_id.clone())))
                 .collect(),
-            FullDefKind::TraitImpl { items, .. } => items
-                .iter()
+            // Only used to resolve paths and `#[charon::contract]` targets, so building the item
+            // list here is fine.
+            FullDefKind::TraitImpl { .. } => self
+                .trait_impl_items(s)
+                .into_iter()
                 .filter_map(|item| Some((item.name?, item.def_id()?.clone())))
                 .collect(),
             _ => vec![],
@@ -1316,6 +1250,111 @@ fn get_trait_decl_dyn_self_ty<'tcx, S: UnderOwnerState<'tcx>>(
             ty
         }
     })
+}
+
+/// What a trait impl needs to build its list of associated items. Building it resolves each item's
+/// implied traits and translates its `ItemRef`, which is only ever needed to build the impl's
+/// vtable or to translate the impl's items in polymorphic mode; mono mode looks at neither for most
+/// impls. Kept as ingredients and built on demand; see [`FullDef::trait_impl_items`].
+#[derive(Clone, Debug)]
+pub struct TraitImplItems<'tcx> {
+    def_id: RDefId,
+    trait_ref: ty::TraitRef<'tcx>,
+    /// The impl's generic arguments, or its identity args if it wasn't instantiated.
+    args: ty::GenericArgsRef<'tcx>,
+    this: ItemRef,
+}
+
+impl<'tcx> TraitImplItems<'tcx> {
+    /// `s` must be owned by the impl itself, as it was when the `FullDef` was built.
+    fn build<S: UnderOwnerState<'tcx>>(&self, s: &S) -> Vec<ImplAssocItem> {
+        use std::collections::HashMap;
+        let tcx = s.base().tcx;
+        let def_id = self.def_id;
+        let mut item_map: HashMap<RDefId, _> = tcx
+            .associated_items(def_id)
+            .in_definition_order()
+            .map(|assoc| (assoc.trait_item_def_id().unwrap(), assoc))
+            .collect();
+        let items: Vec<ImplAssocItem> = tcx
+            .associated_items(self.trait_ref.def_id)
+            .in_definition_order()
+            .map(|decl_assoc| {
+                let decl_def_id = decl_assoc.def_id;
+                let trait_impl_id = def_id;
+                let value = match item_map.remove(&decl_def_id) {
+                    Some(impl_assoc) => {
+                        let impl_assoc_def_id: DefId = impl_assoc.def_id.sinto(s);
+                        let virtual_item = VirtualImplAssocItem::new(
+                            trait_impl_id,
+                            decl_def_id,
+                            impl_assoc.def_id,
+                        );
+                        let virtual_item_def_id = DefId::make_assoc_item_impl(s, virtual_item);
+                        let s = &s.with_hax_owner(&virtual_item_def_id);
+                        let item_decl_args =
+                            virtual_item.args_for_item_decl(s, self.trait_ref.args);
+                        let item_impl_args = virtual_item.args_for_item_impl(s, self.args);
+                        let assoc_ty_value =
+                            if matches!(decl_assoc.kind, ty::AssocKind::Type { .. }) {
+                                let ty = inst_binder(
+                                    tcx,
+                                    s.typing_env(),
+                                    Some(item_impl_args),
+                                    impl_assoc_def_id.type_of(s),
+                                );
+                                Some(ty.sinto(s))
+                            } else {
+                                None
+                            };
+                        let required_trait_proofs =
+                            solve_item_implied_traits(s, decl_def_id, item_decl_args);
+                        let param_env = {
+                            // Pass `None` to get the generics, but add the known parent.
+                            // FIXME: maybe a custom enum instead of `Option<Args>`.
+                            let mut param_env = get_param_env(s, None);
+                            param_env.generics.parent = Some(self.this.def_id.clone());
+                            param_env.parent = Some(self.this.clone());
+                            param_env
+                        };
+                        let item = ItemRef::translate(s, impl_assoc.def_id, item_impl_args);
+                        let late_bound =
+                            late_bound_for_def(s, impl_assoc.def_id, Some(item_impl_args));
+                        let value = ImplAssocItemValue {
+                            item,
+                            assoc_ty_value,
+                            implied_trait_proofs: required_trait_proofs,
+                        };
+                        Some(TraitItemBinder {
+                            def_id: virtual_item_def_id,
+                            param_env,
+                            late_bound,
+                            skip_binder: value,
+                        })
+                    }
+                    None => None,
+                };
+
+                ImplAssocItem {
+                    name: decl_assoc.opt_name().sinto(s),
+                    value,
+                    decl_def_id: decl_def_id.sinto(s),
+                }
+            })
+            .collect();
+        assert!(item_map.is_empty());
+        items
+    }
+}
+
+impl<'tcx> FullDef<'tcx> {
+    /// The associated items of this trait impl. Panics if this isn't a trait impl.
+    pub fn trait_impl_items<S: BaseState<'tcx>>(&self, s: &S) -> Vec<ImplAssocItem> {
+        let FullDefKind::TraitImpl { items, .. } = self.kind() else {
+            panic!("not a trait impl: {self:?}")
+        };
+        items.build(&s.with_hax_owner(&self.this.def_id))
+    }
 }
 
 /// What a function item needs to build its virtual `Fn`/`FnMut`/`FnOnce` impls. Building one

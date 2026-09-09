@@ -887,15 +887,16 @@ impl<'tcx> ItemTransCtx<'tcx, '_> {
         impl_kind: TransImplSource,
     ) -> Result<Body, Error> {
         let (implemented_trait_ref, impl_items) = match impl_def.kind() {
-            hax::FullDefKind::TraitImpl {
-                trait_pred, items, ..
-            } => {
+            hax::FullDefKind::TraitImpl { trait_pred, .. } => {
                 assert_ne!(impl_kind, TransImplSource::Marker);
-                (trait_pred.trait_ref.clone(), items.as_slice())
+                (
+                    trait_pred.trait_ref.clone(),
+                    impl_def.trait_impl_items(self.hax_state()),
+                )
             }
             hax::FullDefKind::Trait { self_predicate, .. } => {
                 assert_eq!(impl_kind, TransImplSource::Marker);
-                (self_predicate.trait_ref.clone(), &[] as &[_])
+                (self_predicate.trait_ref.clone(), Vec::new())
             }
             _ => unreachable!(),
         };
