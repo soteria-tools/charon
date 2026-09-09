@@ -406,6 +406,16 @@ impl<'tcx> TranslateCtx<'tcx> {
         let _: Option<ItemId> = self.register_and_enqueue(&None, item_src);
     }
 
+    /// Whether this item is one we only ever translate so that other items can name it: in
+    /// monomorphized mode, a polymorphic trait impl block. Nothing refers to such an impl — mono
+    /// code refers to the monomorphic one — but a nested item like `foo::precondition_check` is
+    /// named through the polymorphic `foo`, and `foo` through its polymorphic impl.
+    pub(crate) fn is_name_only_impl(&self, item_src: &TransItemSource) -> bool {
+        self.options.monomorphize_with_hax
+            && matches!(item_src.item, RustcItem::Poly(..))
+            && matches!(item_src.kind, TransItemSourceKind::TraitImpl(..))
+    }
+
     pub(crate) fn register_no_enqueue<T: TryFrom<ItemId>>(
         &mut self,
         dep_src: &Option<DepSource>,
@@ -737,7 +747,9 @@ impl<'tcx, 'ctx> ItemTransCtx<'tcx, 'ctx> {
         let mono =
             self.monomorphize() && (kind.is_for_trait() || !self.item_src.kind.is_for_trait());
         let item_src = TransItemSource::from_item(&item, kind, mono);
-        if enqueue {
+        // When we're only translating this item so that others can name it, everything it mentions
+        // gets an id and a name — enough to print — but is not queued for translation.
+        if enqueue && !self.name_only {
             self.register_and_enqueue(span, item_src)
         } else {
             self.register_no_enqueue(span, &item_src)

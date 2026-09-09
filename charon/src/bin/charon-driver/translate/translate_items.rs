@@ -103,6 +103,11 @@ impl<'tcx> TranslateCtx<'tcx> {
 
         // Initialize the item translation context
         let mut bt_ctx = ItemTransCtx::new(item_src.clone(), trans_id, self);
+        // A polymorphic trait impl in monomorphized mode is one we only ever mention in a name: a
+        // nested item like `foo::precondition_check` is named through the polymorphic `foo`, and
+        // `foo` through its polymorphic impl block. Translate it so the name prints, but don't let
+        // it drag its whole polymorphic neighbourhood in behind it.
+        bt_ctx.name_only = bt_ctx.t_ctx.is_name_only_impl(&item_src);
         trace!(
             "About to translate item `{:?}` as a {:?}; \
             target_id={trans_id:?}, mono={}",
@@ -1129,8 +1134,10 @@ impl<'tcx> ItemTransCtx<'tcx, '_> {
         let mut types: IndexMap<AssocTypeId, _> = IndexMap::new();
         let mut methods: IndexMap<TraitMethodId, _> = IndexMap::new();
 
-        // In mono mode, we do not translate any associated items in trait impl.
-        if self.monomorphize() {
+        // In mono mode, we do not translate any associated items in trait impl. Neither do we for
+        // an impl we only translate so that other items can name it: its associated items are the
+        // polymorphic ones, which nothing in a monomorphized crate refers to.
+        if self.monomorphize() || self.name_only {
             return Ok(TraitImpl {
                 def_id,
                 item_meta,

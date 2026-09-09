@@ -40,7 +40,7 @@ pub trait MyConfig<Self>
 // Full name: test_crate::Concrete
 pub struct Concrete {}
 
-// Full name: test_crate::{impl#1}::SLICE_HOLDER::ARR
+// Full name: test_crate::{impl MyConfig for Concrete}::SLICE_HOLDER::ARR
 fn ARR() -> [u64; 1usize]
 {
     let _0: [u64; 1usize]; // return
@@ -50,7 +50,7 @@ fn ARR() -> [u64; 1usize]
     return
 }
 
-// Full name: test_crate::{impl#1}::SLICE_HOLDER::ARR
+// Full name: test_crate::{impl MyConfig for Concrete}::SLICE_HOLDER::ARR
 const ARR: [u64; 1usize] = ARR()
 
 // Full name: test_crate::{impl MyConfig for Concrete}::SLICE_HOLDER

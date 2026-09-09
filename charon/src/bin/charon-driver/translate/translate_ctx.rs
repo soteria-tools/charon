@@ -116,6 +116,10 @@ pub(crate) struct ItemTransCtx<'tcx, 'ctx> {
     pub binding_levels: BindingStack<BindingLevel>,
     /// When `Some`, translate any erased lifetime to a fresh `Region::Body` lifetime.
     pub lifetime_freshener: Option<IndexMap<RegionId, ()>>,
+    /// Whether we are translating this item only so that other items can name it. Items it refers
+    /// to are registered — they get an id and a name, so they still print — but not enqueued for
+    /// translation.
+    pub name_only: bool,
 }
 
 /// Translates `T` into `U` using `hax`'s `SInto` trait, catching any hax panics.
@@ -228,6 +232,7 @@ impl<'tcx, 'ctx> ItemTransCtx<'tcx, 'ctx> {
             error_on_trait_proof_error: true,
             binding_levels: Default::default(),
             lifetime_freshener: None,
+            name_only: false,
         }
     }
 
