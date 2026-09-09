@@ -376,10 +376,11 @@ pub enum FullDefKind<'tcx> {
         param_env: ParamEnv,
         associated_item: AssocItem,
         inline: InlineAttr,
-        /// The function signature when this method is used in a vtable. `None` if this method is not
-        /// vtable safe. `Some(sig)` if it is vtable safe, where `sig` is the trait method declaration's
-        /// signature with `Self` replaced by `dyn Trait` and associated types normalized.
-        vtable_sig: Option<PolyFnSig>,
+        /// `Some` if this method is vtable safe, in which case it carries what's needed to build
+        /// the signature the method has in a vtable: the trait method declaration's signature with
+        /// `Self` replaced by `dyn Trait` and associated types normalized. Use
+        /// [`FullDef::vtable_sig`] to build it.
+        vtable_sig: Option<VtableSig<'tcx>>,
         sig: PolyFnSig,
         /// The arguments of this function, tupled as the `Fn*` traits take them, e.g. `(A, B, C)`.
         /// Binds the same variables as `sig`. `None` if this function doesn't implement `Fn*`.
@@ -506,6 +507,45 @@ fn adjust_by_value_vtable_receiver<'tcx>(
     })
 }
 
+/// What a method needs to rebuild the signature it has when called through a vtable. Building one
+/// normalizes the signature under `dyn Trait`, and only the methods that end up in a vtable ever
+/// need it, so we record that the method is vtable-safe and build the signature on demand; see
+/// [`FullDef::vtable_sig`].
+#[derive(Clone, Debug)]
+pub struct VtableSig<'tcx> {
+    /// The method's generic arguments, or `None` if it wasn't instantiated.
+    args: Option<ty::GenericArgsRef<'tcx>>,
+}
+
+impl<'tcx> VtableSig<'tcx> {
+    /// `Some` iff this method gets a slot in the vtable of its trait, i.e. iff
+    /// [`VtableSig::build`] would return `Some`.
+    // The state that owns the method DefId
+    fn new(s: &impl UnderOwnerState<'tcx>, args: Option<ty::GenericArgsRef<'tcx>>) -> Option<Self> {
+        let method_def_id = s.owner().as_real_def_id().unwrap();
+        let tcx = s.base().tcx;
+        let assoc_item = tcx.associated_item(method_def_id);
+
+        // Get the original trait method id.
+        let method_decl_id = match assoc_item.container {
+            ty::AssocContainer::TraitImpl(Ok(id)) => id,
+            ty::AssocContainer::Trait => method_def_id,
+            _ => return None,
+        };
+        let trait_id = tcx.trait_of_assoc(method_decl_id)?;
+
+        let decl_assoc_item = tcx.associated_item(method_decl_id);
+        if !rustc_trait_selection::traits::is_vtable_safe_method(tcx, trait_id, decl_assoc_item) {
+            return None;
+        }
+        // The `dyn_self` we need to build the signature only exists for a dyn-compatible trait.
+        if !tcx.is_dyn_compatible(trait_id) {
+            return None;
+        }
+        Some(VtableSig { args })
+    }
+}
+
 fn gen_vtable_sig<'tcx>(
     // The state that owns the method DefId
     s: &impl UnderOwnerState<'tcx>,
@@ -522,12 +562,6 @@ fn gen_vtable_sig<'tcx>(
         ty::AssocContainer::Trait => method_def_id,
         _ => return None,
     };
-    let trait_id = tcx.trait_of_assoc(method_decl_id)?;
-
-    let decl_assoc_item = tcx.associated_item(method_decl_id);
-    if !rustc_trait_selection::traits::is_vtable_safe_method(tcx, trait_id, decl_assoc_item) {
-        return None;
-    }
 
     // Move into the context of the container (trait decl or impl) instead of the method.
     let s = &s.with_rustc_owner(container_id);
@@ -752,7 +786,7 @@ where
                 param_env: get_param_env(s, args),
                 associated_item: AssocItem::sfrom_instantiated(s, &item, args),
                 inline: tcx.codegen_fn_attrs(def_id).inline.sinto(s),
-                vtable_sig: gen_vtable_sig(s, args),
+                vtable_sig: VtableSig::new(s, args),
                 tupled_args_ty: fn_trait_impls
                     .is_some()
                     .then(|| tupled_args_ty(s, sig).sinto(s)),
@@ -1382,6 +1416,18 @@ impl<'tcx> FullDef<'tcx> {
         // Resolution happens in the context of the item itself, as it did when we built the
         // `FullDef`.
         Some(impls.build(&s.with_hax_owner(&self.this.def_id), kind))
+    }
+
+    /// The signature this method has when called through a vtable, or `None` if this isn't a
+    /// vtable-safe method.
+    pub fn vtable_sig<S: BaseState<'tcx>>(&self, s: &S) -> Option<PolyFnSig> {
+        let FullDefKind::AssocFn { vtable_sig, .. } = self.kind() else {
+            return None;
+        };
+        let vtable_sig = vtable_sig.as_ref()?;
+        // Resolution happens in the context of the item itself, as it did when we built the
+        // `FullDef`.
+        gen_vtable_sig(&s.with_hax_owner(&self.this.def_id), vtable_sig.args)
     }
 }
 
